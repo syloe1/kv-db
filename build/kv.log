@@ -1,0 +1,3 @@
+PUT name Alice
+PUT age 18
+DEL age
