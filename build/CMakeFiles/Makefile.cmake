@@ -44,4 +44,5 @@ set(CMAKE_MAKEFILE_PRODUCTS
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/kv.dir/DependInfo.cmake"
+  "CMakeFiles/write_data.dir/DependInfo.cmake"
   )

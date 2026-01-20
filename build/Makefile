@@ -129,12 +129,26 @@ kv/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kv.dir/build.make CMakeFiles/kv.dir/build
 .PHONY : kv/fast
 
+#=============================================================================
+# Target rules for targets named write_data
+
+# Build rule for target.
+write_data: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 write_data
+.PHONY : write_data
+
+# fast build rule for target.
+write_data/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/write_data.dir/build.make CMakeFiles/write_data.dir/build
+.PHONY : write_data/fast
+
 src/db/kv_db.o: src/db/kv_db.cpp.o
 .PHONY : src/db/kv_db.o
 
 # target to build an object file
 src/db/kv_db.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kv.dir/build.make CMakeFiles/kv.dir/src/db/kv_db.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/write_data.dir/build.make CMakeFiles/write_data.dir/src/db/kv_db.cpp.o
 .PHONY : src/db/kv_db.cpp.o
 
 src/db/kv_db.i: src/db/kv_db.cpp.i
@@ -143,6 +157,7 @@ src/db/kv_db.i: src/db/kv_db.cpp.i
 # target to preprocess a source file
 src/db/kv_db.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kv.dir/build.make CMakeFiles/kv.dir/src/db/kv_db.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/write_data.dir/build.make CMakeFiles/write_data.dir/src/db/kv_db.cpp.i
 .PHONY : src/db/kv_db.cpp.i
 
 src/db/kv_db.s: src/db/kv_db.cpp.s
@@ -151,6 +166,7 @@ src/db/kv_db.s: src/db/kv_db.cpp.s
 # target to generate assembly for a file
 src/db/kv_db.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kv.dir/build.make CMakeFiles/kv.dir/src/db/kv_db.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/write_data.dir/build.make CMakeFiles/write_data.dir/src/db/kv_db.cpp.s
 .PHONY : src/db/kv_db.cpp.s
 
 src/log/wal.o: src/log/wal.cpp.o
@@ -159,6 +175,7 @@ src/log/wal.o: src/log/wal.cpp.o
 # target to build an object file
 src/log/wal.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kv.dir/build.make CMakeFiles/kv.dir/src/log/wal.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/write_data.dir/build.make CMakeFiles/write_data.dir/src/log/wal.cpp.o
 .PHONY : src/log/wal.cpp.o
 
 src/log/wal.i: src/log/wal.cpp.i
@@ -167,6 +184,7 @@ src/log/wal.i: src/log/wal.cpp.i
 # target to preprocess a source file
 src/log/wal.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kv.dir/build.make CMakeFiles/kv.dir/src/log/wal.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/write_data.dir/build.make CMakeFiles/write_data.dir/src/log/wal.cpp.i
 .PHONY : src/log/wal.cpp.i
 
 src/log/wal.s: src/log/wal.cpp.s
@@ -175,6 +193,7 @@ src/log/wal.s: src/log/wal.cpp.s
 # target to generate assembly for a file
 src/log/wal.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kv.dir/build.make CMakeFiles/kv.dir/src/log/wal.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/write_data.dir/build.make CMakeFiles/write_data.dir/src/log/wal.cpp.s
 .PHONY : src/log/wal.cpp.s
 
 src/main.o: src/main.cpp.o
@@ -207,6 +226,7 @@ src/storage/memtable.o: src/storage/memtable.cpp.o
 # target to build an object file
 src/storage/memtable.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kv.dir/build.make CMakeFiles/kv.dir/src/storage/memtable.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/write_data.dir/build.make CMakeFiles/write_data.dir/src/storage/memtable.cpp.o
 .PHONY : src/storage/memtable.cpp.o
 
 src/storage/memtable.i: src/storage/memtable.cpp.i
@@ -215,6 +235,7 @@ src/storage/memtable.i: src/storage/memtable.cpp.i
 # target to preprocess a source file
 src/storage/memtable.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kv.dir/build.make CMakeFiles/kv.dir/src/storage/memtable.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/write_data.dir/build.make CMakeFiles/write_data.dir/src/storage/memtable.cpp.i
 .PHONY : src/storage/memtable.cpp.i
 
 src/storage/memtable.s: src/storage/memtable.cpp.s
@@ -223,7 +244,32 @@ src/storage/memtable.s: src/storage/memtable.cpp.s
 # target to generate assembly for a file
 src/storage/memtable.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kv.dir/build.make CMakeFiles/kv.dir/src/storage/memtable.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/write_data.dir/build.make CMakeFiles/write_data.dir/src/storage/memtable.cpp.s
 .PHONY : src/storage/memtable.cpp.s
+
+src/write_data.o: src/write_data.cpp.o
+.PHONY : src/write_data.o
+
+# target to build an object file
+src/write_data.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/write_data.dir/build.make CMakeFiles/write_data.dir/src/write_data.cpp.o
+.PHONY : src/write_data.cpp.o
+
+src/write_data.i: src/write_data.cpp.i
+.PHONY : src/write_data.i
+
+# target to preprocess a source file
+src/write_data.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/write_data.dir/build.make CMakeFiles/write_data.dir/src/write_data.cpp.i
+.PHONY : src/write_data.cpp.i
+
+src/write_data.s: src/write_data.cpp.s
+.PHONY : src/write_data.s
+
+# target to generate assembly for a file
+src/write_data.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/write_data.dir/build.make CMakeFiles/write_data.dir/src/write_data.cpp.s
+.PHONY : src/write_data.cpp.s
 
 # Help Target
 help:
@@ -234,6 +280,7 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... kv"
+	@echo "... write_data"
 	@echo "... src/db/kv_db.o"
 	@echo "... src/db/kv_db.i"
 	@echo "... src/db/kv_db.s"
@@ -246,6 +293,9 @@ help:
 	@echo "... src/storage/memtable.o"
 	@echo "... src/storage/memtable.i"
 	@echo "... src/storage/memtable.s"
+	@echo "... src/write_data.o"
+	@echo "... src/write_data.i"
+	@echo "... src/write_data.s"
 .PHONY : help
 
 

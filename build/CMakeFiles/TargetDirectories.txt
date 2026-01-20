@@ -1,3 +1,4 @@
 /home/t/projects/kv/build/CMakeFiles/kv.dir
+/home/t/projects/kv/build/CMakeFiles/write_data.dir
 /home/t/projects/kv/build/CMakeFiles/edit_cache.dir
 /home/t/projects/kv/build/CMakeFiles/rebuild_cache.dir
