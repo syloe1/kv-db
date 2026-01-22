@@ -10,8 +10,41 @@ void SSTableWriter::write(
     const std::string& filename,
     const std::map<std::string, std::vector<VersionedValue>>& data
 ) {
-    // Use default configuration for backward compatibility
-    write_with_block_index(filename, data, Config());
+    std::ofstream out(filename, std::ios::binary);
+    std::vector<std::pair<std::string, uint64_t>> index;
+    BloomFilter bloom(8192, 3);
+
+    // 写入数据：key | seq | value
+    // 按 key 排序，key 相同按 seq DESC 排序
+    for (const auto& [key, versions] : data) {
+        uint64_t offset = out.tellp();
+        
+        // 对每个 key 的所有版本，按 seq DESC 排序
+        std::vector<VersionedValue> sorted_versions = versions;
+        std::sort(sorted_versions.begin(), sorted_versions.end(),
+                  [](const VersionedValue& a, const VersionedValue& b) {
+                      return a.seq > b.seq; // DESC
+                  });
+        
+        // 写入所有版本
+        for (const auto& v : sorted_versions) {
+            out << key << " " << v.seq << " " << v.value << '\n';
+        }
+        
+        index.push_back({key, offset});
+        bloom.add(key);
+    }
+
+    uint64_t index_offset = out.tellp();
+
+    for(const auto& [key, offset] : index) {
+        out<<key<<" "<<offset<<'\n';
+    }
+
+    uint64_t bloom_offset = out.tellp();
+    bloom.serialize(out);
+    out<<index_offset<<" "<<bloom_offset<<'\n';
+    out.flush();
 }
 
 void SSTableWriter::write_with_block_index(
