@@ -1,0 +1,5 @@
+ADD 0 data/sstable_0.dat app:name user:2
+ADD 0 data/sstable_0.dat app:module_001 user:049
+ADD 0 data/sstable_1.dat config:setting_051 user:099
+ADD 0 data/sstable_0.dat test:001 test:099
+ADD 0 data/sstable_1.dat test:101 test:199

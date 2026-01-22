@@ -1,0 +1,4 @@
+PUT test:welcome 'Hello
+PUT network:test 'Hello
+PUT network:key1 value1
+PUT network:key2 value2

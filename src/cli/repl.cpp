@@ -1,0 +1,1046 @@
+#include "cli/repl.h"
+#include "iterator/iterator.h"
+#include "benchmark/ycsb_benchmark.h"
+#ifdef ENABLE_NETWORK
+#include "network/network_server.h"
+#endif
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <cstdlib>
+#include <cstring>
+
+// readline 头文件
+#ifdef HAVE_READLINE
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
+
+// 静态成员初始化
+std::vector<std::string> REPL::commands_ = {
+    "PUT", "GET", "DEL", "FLUSH", "COMPACT", 
+    "SNAPSHOT", "GET_AT", "RELEASE", "SCAN", "PREFIX_SCAN",
+    "CONCURRENT_TEST", "BENCHMARK", "SET_COMPACTION", 
+    "START_NETWORK", "STOP_NETWORK", "STATS", "LSM", "HELP", "MAN", "EXIT", "QUIT"
+};
+
+REPL::REPL(KVDB& db) : db_(db) {
+    setup_readline();
+#ifdef ENABLE_NETWORK
+    network_server_ = std::make_unique<NetworkServer>(db_);
+#endif
+}
+
+REPL::~REPL() {
+#ifdef HAVE_READLINE
+    // 保存历史到文件
+    write_history(".kvdb_history");
+    // 清理 readline 历史
+    clear_history();
+#endif
+}
+
+std::vector<std::string> REPL::split(const std::string& line) {
+    std::vector<std::string> tokens;
+    std::istringstream iss(line);
+    std::string token;
+    while (iss >> token) {
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
+void REPL::setup_readline() {
+#ifdef HAVE_READLINE
+    // 设置补全函数
+    rl_attempted_completion_function = command_completion;
+    
+    // 设置历史文件
+    const char* histfile = ".kvdb_history";
+    read_history(histfile);
+    
+    // 设置最大历史记录数
+    stifle_history(1000);
+    
+    // 保存历史文件的钩子
+    rl_bind_key('\t', rl_complete);  // Tab 键补全
+#endif
+}
+
+char* REPL::read_input(const char* prompt) {
+#ifdef HAVE_READLINE
+    char* line = readline(prompt);
+    if (line && *line) {
+        add_history(line);  // 添加到历史记录
+    }
+    return line;
+#else
+    std::cout << prompt;
+    std::string line;
+    if (std::getline(std::cin, line)) {
+        char* result = (char*)malloc(line.length() + 1);
+        strcpy(result, line.c_str());
+        return result;
+    }
+    return nullptr;
+#endif
+}
+
+void REPL::run() {
+    std::cout << "KVDB v1.0.0 - Type 'HELP' for commands\n";
+    std::cout << "Tips: Use ↑/↓ for history, TAB for completion\n";
+    
+    while (true) {
+        char* line_cstr = read_input("kvdb> ");
+        if (!line_cstr) {
+            std::cout << "\nBye!\n";
+            break;
+        }
+        
+        std::string line(line_cstr);
+        free(line_cstr);
+        
+        if (line.empty()) continue;
+        
+        auto tokens = split(line);
+        if (tokens.empty()) continue;
+        
+        // 转换为大写
+        std::string cmd = tokens[0];
+        for (char& c : cmd) {
+            c = std::toupper(c);
+        }
+        tokens[0] = cmd;
+        
+        if (cmd == "EXIT" || cmd == "QUIT") {
+            std::cout << "Bye!\n";
+            break;
+        }
+        
+        execute_command(tokens);
+    }
+}
+
+// readline 补全函数
+#ifdef HAVE_READLINE
+char** REPL::command_completion(const char* text, int start, int end) {
+    (void)end;  // 未使用
+    
+    // 只在命令位置补全
+    if (start == 0) {
+        return rl_completion_matches(text, command_generator);
+    }
+    return nullptr;
+}
+
+char* REPL::command_generator(const char* text, int state) {
+    static int index = 0;
+    static size_t len = 0;
+    
+    if (!state) {
+        index = 0;
+        len = strlen(text);
+    }
+    
+    while (index < (int)commands_.size()) {
+        const std::string& cmd = commands_[index++];
+        if (cmd.length() >= len && cmd.substr(0, len) == text) {
+            char* match = (char*)malloc(cmd.length() + 1);
+            strcpy(match, cmd.c_str());
+            return match;
+        }
+    }
+    
+    return nullptr;
+}
+#endif
+
+void REPL::execute_command(const std::vector<std::string>& tokens) {
+    std::string cmd = tokens[0];
+    
+    // 检查是否是帮助请求
+    if (is_help_request(tokens)) {
+        show_command_help(cmd);
+        return;
+    }
+    
+    try {
+        if (cmd == "PUT") {
+            cmd_put(tokens);
+        } else if (cmd == "GET") {
+            cmd_get(tokens);
+        } else if (cmd == "DEL") {
+            cmd_del(tokens);
+        } else if (cmd == "FLUSH") {
+            cmd_flush();
+        } else if (cmd == "COMPACT") {
+            cmd_compact();
+        } else if (cmd == "SNAPSHOT") {
+            cmd_snapshot();
+        } else if (cmd == "GET_AT") {
+            cmd_get_at(tokens);
+        } else if (cmd == "RELEASE") {
+            cmd_release(tokens);
+        } else if (cmd == "SCAN") {
+            cmd_scan(tokens);
+        } else if (cmd == "PREFIX_SCAN") {
+            cmd_prefix_scan(tokens);
+        } else if (cmd == "CONCURRENT_TEST") {
+            cmd_concurrent_test(tokens);
+        } else if (cmd == "BENCHMARK") {
+            cmd_benchmark(tokens);
+        } else if (cmd == "SET_COMPACTION") {
+            cmd_set_compaction_strategy(tokens);
+        } else if (cmd == "START_NETWORK") {
+            cmd_start_network(tokens);
+        } else if (cmd == "STOP_NETWORK") {
+            cmd_stop_network(tokens);
+        } else if (cmd == "STATS") {
+            cmd_stats();
+        } else if (cmd == "LSM") {
+            cmd_lsm();
+        } else if (cmd == "HELP") {
+            cmd_help();
+        } else if (cmd == "MAN") {
+            cmd_man(tokens);
+        } else {
+            std::cout << "Unknown command: " << cmd << ". Type 'HELP' for help.\n";
+        }
+    } catch (const std::exception& e) {
+        std::cout << "Error: " << e.what() << "\n";
+    }
+}
+
+void REPL::cmd_put(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 3) {
+        std::cout << "Usage: PUT <key> <value>\n";
+        return;
+    }
+    
+    db_.put(tokens[1], tokens[2]);
+    std::cout << "OK\n";
+}
+
+void REPL::cmd_get(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: GET <key>\n";
+        return;
+    }
+    
+    std::string value;
+    if (db_.get(tokens[1], value)) {
+        std::cout << value << "\n";
+    } else {
+        std::cout << "NOT FOUND\n";
+    }
+}
+
+void REPL::cmd_del(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: DEL <key>\n";
+        return;
+    }
+    
+    db_.del(tokens[1]);
+    std::cout << "OK\n";
+}
+
+void REPL::cmd_flush() {
+    db_.flush();
+    std::cout << "OK\n";
+}
+
+void REPL::cmd_compact() {
+    db_.compact();
+    std::cout << "OK\n";
+}
+
+void REPL::cmd_snapshot() {
+    Snapshot snap = db_.get_snapshot();
+    active_snapshots_.push_back(snap.seq);
+    std::cout << "snapshot_id = " << snap.seq << "\n";
+}
+
+void REPL::cmd_get_at(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 3) {
+        std::cout << "Usage: GET_AT <key> <snapshot_id>\n";
+        return;
+    }
+    
+    uint64_t snapshot_id = std::stoull(tokens[2]);
+    Snapshot snap(snapshot_id);
+    
+    std::string value;
+    if (db_.get(tokens[1], snap, value)) {
+        std::cout << value << "\n";
+    } else {
+        std::cout << "NOT FOUND\n";
+    }
+}
+
+void REPL::cmd_release(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: RELEASE <snapshot_id>\n";
+        return;
+    }
+    
+    uint64_t snapshot_id = std::stoull(tokens[1]);
+    auto it = std::find(active_snapshots_.begin(), active_snapshots_.end(), snapshot_id);
+    if (it != active_snapshots_.end()) {
+        Snapshot snap(snapshot_id);
+        db_.release_snapshot(snap);
+        active_snapshots_.erase(it);
+        std::cout << "OK\n";
+    } else {
+        std::cout << "Snapshot " << snapshot_id << " not found\n";
+    }
+}
+
+void REPL::cmd_scan(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 3) {
+        std::cout << "Usage: SCAN <begin_key> <end_key>\n";
+        return;
+    }
+    
+    Snapshot snap = db_.get_snapshot();
+    auto it = db_.new_iterator(snap);
+    
+    int count = 0;
+    for (it->seek(tokens[1]); it->valid() && it->key() <= tokens[2]; it->next()) {
+        std::string value = it->value();
+        if (!value.empty()) {
+            std::cout << it->key() << " = " << value << "\n";
+            count++;
+        }
+    }
+    std::cout << "Found " << count << " key(s)\n";
+}
+
+void REPL::cmd_prefix_scan(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: PREFIX_SCAN <prefix>\n";
+        return;
+    }
+    
+    Snapshot snap = db_.get_snapshot();
+    auto it = db_.new_prefix_iterator(snap, tokens[1]);
+    
+    int count = 0;
+    while (it->valid()) {
+        std::string key = it->key();
+        std::string value = it->value();
+        
+        // 检查是否还在前缀范围内
+        if (!(key.size() >= tokens[1].size() && 
+              key.substr(0, tokens[1].size()) == tokens[1])) {
+            break;
+        }
+        
+        if (!value.empty()) {
+            std::cout << key << " = " << value << "\n";
+            count++;
+        }
+        it->next();
+    }
+    std::cout << "Found " << count << " key(s) with prefix '" << tokens[1] << "'\n";
+}
+
+void REPL::cmd_concurrent_test(const std::vector<std::string>& tokens) {
+    std::cout << "=== 并发迭代器测试 ===\n";
+    
+    // 插入测试数据
+    for (int i = 1; i <= 10; i++) {
+        db_.put("test:" + std::to_string(i), "value_" + std::to_string(i));
+    }
+    
+    Snapshot snap = db_.get_snapshot();
+    
+    // 创建并发迭代器
+    auto iter1 = db_.new_concurrent_iterator(snap);
+    auto iter2 = db_.new_concurrent_prefix_iterator(snap, "test:");
+    
+    std::cout << "创建了2个并发迭代器\n";
+    
+    // 测试读操作
+    std::cout << "\n--- 迭代器1 (全扫描) ---\n";
+    int count1 = 0;
+    for (iter1->seek_to_first(); iter1->valid(); iter1->next()) {
+        if (iter1->key().find("test:") == 0) {
+            std::cout << iter1->key() << " = " << iter1->value() << "\n";
+            count1++;
+        }
+    }
+    std::cout << "迭代器1 找到 " << count1 << " 个记录\n";
+    
+    std::cout << "\n--- 迭代器2 (前缀扫描) ---\n";
+    int count2 = 0;
+    while (iter2->valid()) {
+        std::cout << iter2->key() << " = " << iter2->value() << "\n";
+        iter2->next();
+        count2++;
+    }
+    std::cout << "迭代器2 找到 " << count2 << " 个记录\n";
+    
+    // 测试写操作对迭代器的影响
+    std::cout << "\n--- 执行写操作 ---\n";
+    db_.put("test:11", "value_11");
+    db_.del("test:5");
+    
+    std::cout << "写操作完成，迭代器应该已失效\n";
+    
+    // 尝试使用失效的迭代器
+    std::cout << "\n--- 测试失效的迭代器 ---\n";
+    std::cout << "迭代器1 有效性: " << (iter1->valid() ? "有效" : "无效") << "\n";
+    std::cout << "迭代器2 有效性: " << (iter2->valid() ? "有效" : "无效") << "\n";
+    
+    // 创建新的迭代器验证数据
+    std::cout << "\n--- 新迭代器验证数据 ---\n";
+    Snapshot new_snap = db_.get_snapshot();
+    auto new_iter = db_.new_concurrent_prefix_iterator(new_snap, "test:");
+    
+    int new_count = 0;
+    while (new_iter->valid()) {
+        std::cout << new_iter->key() << " = " << new_iter->value() << "\n";
+        new_iter->next();
+        new_count++;
+    }
+    std::cout << "新迭代器找到 " << new_count << " 个记录\n";
+    
+    std::cout << "\n=== 并发测试完成 ===\n";
+}
+
+void REPL::cmd_benchmark(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: BENCHMARK <workload> [records] [operations] [threads]\n";
+        std::cout << "Workloads: A, B, C, D, E, F\n";
+        std::cout << "Example: BENCHMARK A 1000 5000 4\n";
+        return;
+    }
+    
+    // 解析工作负载类型
+    WorkloadType workload;
+    std::string workload_str = tokens[1];
+    if (workload_str == "A") {
+        workload = WorkloadType::WORKLOAD_A;
+    } else if (workload_str == "B") {
+        workload = WorkloadType::WORKLOAD_B;
+    } else if (workload_str == "C") {
+        workload = WorkloadType::WORKLOAD_C;
+    } else if (workload_str == "D") {
+        workload = WorkloadType::WORKLOAD_D;
+    } else if (workload_str == "E") {
+        workload = WorkloadType::WORKLOAD_E;
+    } else if (workload_str == "F") {
+        workload = WorkloadType::WORKLOAD_F;
+    } else {
+        std::cout << "Invalid workload: " << workload_str << std::endl;
+        return;
+    }
+    
+    // 解析参数
+    size_t records = (tokens.size() > 2) ? std::stoull(tokens[2]) : 1000;
+    size_t operations = (tokens.size() > 3) ? std::stoull(tokens[3]) : 5000;
+    size_t threads = (tokens.size() > 4) ? std::stoull(tokens[4]) : 1;
+    
+    // 创建并配置 benchmark
+    YCSBBenchmark benchmark(db_);
+    benchmark.set_workload_type(workload);
+    benchmark.set_record_count(records);
+    benchmark.set_operation_count(operations);
+    benchmark.set_thread_count(threads);
+    
+    // 预加载数据
+    benchmark.load_data();
+    
+    // 运行 benchmark
+    auto result = benchmark.run_benchmark();
+    
+    // 打印结果
+    benchmark.print_results(result);
+}
+
+void REPL::cmd_set_compaction_strategy(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: SET_COMPACTION <strategy>\n";
+        std::cout << "Available strategies:\n";
+        std::cout << "  LEVELED     - Leveled compaction (default, reduces read amplification)\n";
+        std::cout << "  TIERED      - Tiered compaction (reduces write amplification)\n";
+        std::cout << "  SIZE_TIERED - Size-tiered compaction (similar sizes merged)\n";
+        std::cout << "  TIME_WINDOW - Time window compaction (for time-series data)\n";
+        
+        // 显示当前策略
+        CompactionStrategyType current = db_.get_compaction_strategy();
+        std::cout << "\nCurrent strategy: ";
+        switch (current) {
+            case CompactionStrategyType::LEVELED:
+                std::cout << "LEVELED\n";
+                break;
+            case CompactionStrategyType::TIERED:
+                std::cout << "TIERED\n";
+                break;
+            case CompactionStrategyType::SIZE_TIERED:
+                std::cout << "SIZE_TIERED\n";
+                break;
+            case CompactionStrategyType::TIME_WINDOW:
+                std::cout << "TIME_WINDOW\n";
+                break;
+        }
+        return;
+    }
+    
+    std::string strategy_str = tokens[1];
+    CompactionStrategyType strategy;
+    
+    if (strategy_str == "LEVELED") {
+        strategy = CompactionStrategyType::LEVELED;
+    } else if (strategy_str == "TIERED") {
+        strategy = CompactionStrategyType::TIERED;
+    } else if (strategy_str == "SIZE_TIERED") {
+        strategy = CompactionStrategyType::SIZE_TIERED;
+    } else if (strategy_str == "TIME_WINDOW") {
+        strategy = CompactionStrategyType::TIME_WINDOW;
+    } else {
+        std::cout << "Invalid strategy: " << strategy_str << std::endl;
+        std::cout << "Available: LEVELED, TIERED, SIZE_TIERED, TIME_WINDOW\n";
+        return;
+    }
+    
+    db_.set_compaction_strategy(strategy);
+    std::cout << "Compaction strategy set to: " << strategy_str << std::endl;
+    
+    // 显示策略统计信息
+    const auto& stats = db_.get_compaction_stats();
+    std::cout << "\nCompaction Statistics:\n";
+    std::cout << "  Total compactions: " << stats.total_compactions << std::endl;
+    std::cout << "  Bytes read: " << stats.bytes_read / (1024 * 1024) << " MB\n";
+    std::cout << "  Bytes written: " << stats.bytes_written / (1024 * 1024) << " MB\n";
+    std::cout << "  Write amplification: " << std::fixed << std::setprecision(2) 
+              << stats.write_amplification << std::endl;
+    std::cout << "  Total time: " << stats.total_time.count() << " ms\n";
+}
+
+void REPL::cmd_start_network(const std::vector<std::string>& tokens) {
+#ifdef ENABLE_NETWORK
+    if (tokens.size() < 2) {
+        std::cout << "Usage: START_NETWORK <service> [options]\n";
+        std::cout << "Services:\n";
+        std::cout << "  grpc [address]     - Start gRPC server (default: 0.0.0.0:50051)\n";
+        std::cout << "  websocket [port]   - Start WebSocket server (default: 8080)\n";
+        std::cout << "  all                - Start all network services\n";
+        return;
+    }
+    
+    std::string service = tokens[1];
+    
+    if (service == "grpc") {
+        std::string address = (tokens.size() > 2) ? tokens[2] : "0.0.0.0:50051";
+        network_server_->start_grpc(address);
+        std::cout << "gRPC server started on " << address << std::endl;
+        
+    } else if (service == "websocket") {
+        uint16_t port = (tokens.size() > 2) ? static_cast<uint16_t>(std::stoi(tokens[2])) : 8080;
+        network_server_->start_websocket(port);
+        std::cout << "WebSocket server started on port " << port << std::endl;
+        
+    } else if (service == "all") {
+        network_server_->start_all();
+        std::cout << "All network services started" << std::endl;
+        
+    } else {
+        std::cout << "Unknown service: " << service << std::endl;
+        std::cout << "Available services: grpc, websocket, all\n";
+    }
+#else
+    std::cout << "Network support not enabled. Recompile with ENABLE_NETWORK=ON\n";
+#endif
+}
+
+void REPL::cmd_stop_network(const std::vector<std::string>& tokens) {
+#ifdef ENABLE_NETWORK
+    if (tokens.size() < 2) {
+        std::cout << "Usage: STOP_NETWORK <service>\n";
+        std::cout << "Services:\n";
+        std::cout << "  grpc       - Stop gRPC server\n";
+        std::cout << "  websocket  - Stop WebSocket server\n";
+        std::cout << "  all        - Stop all network services\n";
+        
+        // 显示当前状态
+        std::cout << "\nCurrent status:\n";
+        std::cout << "  gRPC: " << (network_server_->is_grpc_running() ? "Running" : "Stopped") << "\n";
+        std::cout << "  WebSocket: " << (network_server_->is_websocket_running() ? "Running" : "Stopped") << "\n";
+        return;
+    }
+    
+    std::string service = tokens[1];
+    
+    if (service == "grpc") {
+        network_server_->stop_grpc();
+        std::cout << "gRPC server stopped" << std::endl;
+        
+    } else if (service == "websocket") {
+        network_server_->stop_websocket();
+        std::cout << "WebSocket server stopped" << std::endl;
+        
+    } else if (service == "all") {
+        network_server_->stop_all();
+        std::cout << "All network services stopped" << std::endl;
+        
+    } else {
+        std::cout << "Unknown service: " << service << std::endl;
+        std::cout << "Available services: grpc, websocket, all\n";
+    }
+#else
+    std::cout << "Network support not enabled. Recompile with ENABLE_NETWORK=ON\n";
+#endif
+}
+
+void REPL::cmd_stats() {
+    // 获取基本统计信息
+    std::cout << "=== Database Statistics ===\n";
+    std::cout << "MemTable: " << db_.get_memtable_size() << " bytes\n";
+    std::cout << "WAL: " << db_.get_wal_size() << " bytes\n";
+    std::cout << "Active Snapshots: " << active_snapshots_.size() << "\n";
+    if (!active_snapshots_.empty()) {
+        std::cout << "  Snapshot IDs: ";
+        for (size_t i = 0; i < active_snapshots_.size(); i++) {
+            std::cout << active_snapshots_[i];
+            if (i < active_snapshots_.size() - 1) std::cout << ", ";
+        }
+        std::cout << "\n";
+    }
+    std::cout << "Cache Hit Rate: " << std::fixed << std::setprecision(2) 
+              << db_.get_cache_hit_rate() << "%\n";
+}
+
+void REPL::cmd_lsm() {
+    std::cout << "=== LSM Tree Structure ===\n";
+    db_.print_lsm_structure();
+}
+
+void REPL::cmd_help() {
+    std::cout << "Available commands:\n";
+    std::cout << "  PUT <key> <value>          - Insert or update a key-value pair\n";
+    std::cout << "  GET <key>                  - Get value for a key\n";
+    std::cout << "  DEL <key>                  - Delete a key\n";
+    std::cout << "  FLUSH                      - Flush MemTable to disk\n";
+    std::cout << "  COMPACT                    - Trigger manual compaction\n";
+    std::cout << "  SNAPSHOT                   - Create a snapshot\n";
+    std::cout << "  GET_AT <key> <snapshot_id> - Get value at a specific snapshot\n";
+    std::cout << "  RELEASE <snapshot_id>      - Release a snapshot\n";
+    std::cout << "  SCAN <begin> <end>         - Range scan from begin to end\n";
+    std::cout << "  PREFIX_SCAN <prefix>       - Scan all keys with given prefix (optimized)\n";
+    std::cout << "  CONCURRENT_TEST            - Test concurrent iterator functionality\n";
+    std::cout << "  BENCHMARK <workload> [args] - Run YCSB benchmark (A/B/C/D/E/F)\n";
+    std::cout << "  SET_COMPACTION <strategy>   - Set compaction strategy (LEVELED/TIERED/SIZE_TIERED/TIME_WINDOW)\n";
+#ifdef ENABLE_NETWORK
+    std::cout << "  START_NETWORK <service>     - Start network services (grpc/websocket/all)\n";
+    std::cout << "  STOP_NETWORK <service>      - Stop network services (grpc/websocket/all)\n";
+#endif
+    std::cout << "  STATS                      - Show database statistics\n";
+    std::cout << "  LSM                        - Show LSM tree structure\n";
+    std::cout << "  HELP                       - Show this help message\n";
+    std::cout << "  MAN <command>              - Show detailed manual for a command\n";
+    std::cout << "  EXIT/QUIT                  - Exit the database\n";
+    std::cout << "\nFor detailed help on a specific command:\n";
+    std::cout << "  MAN <command>              - e.g., MAN PUT\n";
+    std::cout << "  <command> HELP             - e.g., PUT HELP\n";
+    std::cout << "  <command> - HELP           - e.g., PUT - HELP\n";
+}
+
+void REPL::cmd_man(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: MAN <command>\n";
+        std::cout << "Available commands: PUT, GET, DEL, FLUSH, COMPACT, SNAPSHOT, GET_AT, RELEASE, SCAN, PREFIX_SCAN, CONCURRENT_TEST, BENCHMARK, SET_COMPACTION, STATS, LSM, HELP\n";
+        return;
+    }
+    
+    std::string command = tokens[1];
+    // 转换为大写
+    for (char& c : command) {
+        c = std::toupper(c);
+    }
+    
+    show_man_page(command);
+}
+
+bool REPL::is_help_request(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) return false;
+    
+    // 检查 "COMMAND HELP" 格式
+    if (tokens.size() == 2 && tokens[1] == "HELP") {
+        return true;
+    }
+    
+    // 检查 "COMMAND - HELP" 格式
+    if (tokens.size() == 3 && tokens[1] == "-" && tokens[2] == "HELP") {
+        return true;
+    }
+    
+    return false;
+}
+
+void REPL::show_command_help(const std::string& command) {
+    show_man_page(command);
+}
+
+void REPL::show_man_page(const std::string& command) {
+    if (command == "PUT") {
+        std::cout << "NAME\n";
+        std::cout << "    PUT - Insert or update a key-value pair\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    PUT <key> <value>\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The PUT command inserts a new key-value pair into the database or\n";
+        std::cout << "    updates an existing key with a new value. The operation is atomic\n";
+        std::cout << "    and will be written to the Write-Ahead Log (WAL) before being\n";
+        std::cout << "    stored in the MemTable.\n\n";
+        std::cout << "PARAMETERS\n";
+        std::cout << "    key     The key to insert or update (string)\n";
+        std::cout << "    value   The value to associate with the key (string)\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    PUT user:1 \"John Doe\"\n";
+        std::cout << "    PUT config:timeout 30\n";
+        std::cout << "    PUT \"my key\" \"my value\"\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns \"OK\" on success\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    GET, DEL, FLUSH\n";
+        
+    } else if (command == "GET") {
+        std::cout << "NAME\n";
+        std::cout << "    GET - Retrieve value for a key\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    GET <key>\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The GET command retrieves the value associated with the specified\n";
+        std::cout << "    key. It searches through the MemTable first, then through SSTable\n";
+        std::cout << "    files in order from newest to oldest.\n\n";
+        std::cout << "PARAMETERS\n";
+        std::cout << "    key     The key to retrieve (string)\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    GET user:1\n";
+        std::cout << "    GET config:timeout\n";
+        std::cout << "    GET \"my key\"\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns the value if key exists, \"NOT FOUND\" otherwise\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    PUT, GET_AT, SCAN\n";
+        
+    } else if (command == "DEL") {
+        std::cout << "NAME\n";
+        std::cout << "    DEL - Delete a key\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    DEL <key>\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The DEL command marks a key as deleted by inserting a tombstone\n";
+        std::cout << "    record. The key will not be returned by GET operations, but the\n";
+        std::cout << "    actual space may not be reclaimed until compaction occurs.\n\n";
+        std::cout << "PARAMETERS\n";
+        std::cout << "    key     The key to delete (string)\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    DEL user:1\n";
+        std::cout << "    DEL config:timeout\n";
+        std::cout << "    DEL \"my key\"\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns \"OK\" on success (even if key doesn't exist)\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    PUT, GET, COMPACT\n";
+        
+    } else if (command == "FLUSH") {
+        std::cout << "NAME\n";
+        std::cout << "    FLUSH - Flush MemTable to disk\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    FLUSH\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The FLUSH command forces the current MemTable to be written to\n";
+        std::cout << "    disk as an SSTable file. This operation is normally performed\n";
+        std::cout << "    automatically when the MemTable reaches its size limit.\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    FLUSH\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns \"OK\" on success\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    COMPACT, STATS\n";
+        
+    } else if (command == "COMPACT") {
+        std::cout << "NAME\n";
+        std::cout << "    COMPACT - Trigger manual compaction\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    COMPACT\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The COMPACT command triggers a manual compaction process that\n";
+        std::cout << "    merges SSTable files to reduce space usage and improve read\n";
+        std::cout << "    performance. This removes deleted keys and consolidates data.\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    COMPACT\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns \"OK\" on success\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    FLUSH, LSM, STATS\n";
+        
+    } else if (command == "SNAPSHOT") {
+        std::cout << "NAME\n";
+        std::cout << "    SNAPSHOT - Create a database snapshot\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    SNAPSHOT\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The SNAPSHOT command creates a point-in-time snapshot of the\n";
+        std::cout << "    database. This allows you to read data as it existed at the\n";
+        std::cout << "    time the snapshot was created, even if the data is later\n";
+        std::cout << "    modified or deleted.\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    SNAPSHOT\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns \"snapshot_id = <id>\" where <id> is the snapshot identifier\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    GET_AT, RELEASE\n";
+        
+    } else if (command == "GET_AT") {
+        std::cout << "NAME\n";
+        std::cout << "    GET_AT - Get value at a specific snapshot\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    GET_AT <key> <snapshot_id>\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The GET_AT command retrieves the value of a key as it existed\n";
+        std::cout << "    at the time when the specified snapshot was created. This allows\n";
+        std::cout << "    you to access historical versions of data.\n\n";
+        std::cout << "PARAMETERS\n";
+        std::cout << "    key         The key to retrieve (string)\n";
+        std::cout << "    snapshot_id The snapshot identifier (number)\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    GET_AT user:1 12345\n";
+        std::cout << "    GET_AT config:timeout 67890\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns the value if key existed at snapshot time, \"NOT FOUND\" otherwise\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    SNAPSHOT, RELEASE, GET\n";
+        
+    } else if (command == "RELEASE") {
+        std::cout << "NAME\n";
+        std::cout << "    RELEASE - Release a snapshot\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    RELEASE <snapshot_id>\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The RELEASE command releases a previously created snapshot,\n";
+        std::cout << "    allowing the database to reclaim resources associated with\n";
+        std::cout << "    maintaining that snapshot's view of the data.\n\n";
+        std::cout << "PARAMETERS\n";
+        std::cout << "    snapshot_id The snapshot identifier to release (number)\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    RELEASE 12345\n";
+        std::cout << "    RELEASE 67890\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns \"OK\" on success, error message if snapshot not found\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    SNAPSHOT, GET_AT\n";
+        
+    } else if (command == "SCAN") {
+        std::cout << "NAME\n";
+        std::cout << "    SCAN - Range scan from begin to end key\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    SCAN <begin_key> <end_key>\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The SCAN command performs a range scan, returning all key-value\n";
+        std::cout << "    pairs where the key is lexicographically between begin_key and\n";
+        std::cout << "    end_key (inclusive). Results are returned in sorted order.\n\n";
+        std::cout << "PARAMETERS\n";
+        std::cout << "    begin_key   The starting key for the range (string)\n";
+        std::cout << "    end_key     The ending key for the range (string)\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    SCAN user:1 user:9\n";
+        std::cout << "    SCAN a z\n";
+        std::cout << "    SCAN \"config:\" \"config:~\"\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns matching key-value pairs and a count summary\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    GET, SNAPSHOT\n";
+        
+    } else if (command == "PREFIX_SCAN") {
+        std::cout << "NAME\n";
+        std::cout << "    PREFIX_SCAN - Scan all keys with given prefix (optimized)\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    PREFIX_SCAN <prefix>\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The PREFIX_SCAN command performs an optimized prefix scan, returning\n";
+        std::cout << "    all key-value pairs where the key starts with the specified prefix.\n";
+        std::cout << "    This command uses heap-based merge iterator (O(log N)) and prefix\n";
+        std::cout << "    filtering optimizations to improve performance compared to regular SCAN.\n\n";
+        std::cout << "PARAMETERS\n";
+        std::cout << "    prefix      The prefix to search for (string)\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    PREFIX_SCAN user:\n";
+        std::cout << "    PREFIX_SCAN config:\n";
+        std::cout << "    PREFIX_SCAN \"app:settings:\"\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns matching key-value pairs and a count summary\n\n";
+        std::cout << "PERFORMANCE\n";
+        std::cout << "    - Uses heap-based merge iterator for O(log N) complexity\n";
+        std::cout << "    - Applies prefix filtering at iterator level\n";
+        std::cout << "    - Skips non-matching SSTable blocks early\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    SCAN, GET\n";
+        
+    } else if (command == "CONCURRENT_TEST") {
+        std::cout << "NAME\n";
+        std::cout << "    CONCURRENT_TEST - Test concurrent iterator functionality\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    CONCURRENT_TEST\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The CONCURRENT_TEST command demonstrates the read-write isolation\n";
+        std::cout << "    capabilities of concurrent iterators. It creates multiple iterators,\n";
+        std::cout << "    performs read operations, then executes write operations to show\n";
+        std::cout << "    how iterators are invalidated to maintain consistency.\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    CONCURRENT_TEST\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns test results and iterator validity status\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    SCAN, PREFIX_SCAN\n";
+        
+    } else if (command == "BENCHMARK") {
+        std::cout << "NAME\n";
+        std::cout << "    BENCHMARK - Run YCSB benchmark suite\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    BENCHMARK <workload> [records] [operations] [threads]\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The BENCHMARK command runs Yahoo! Cloud Serving Benchmark (YCSB)\n";
+        std::cout << "    workloads to measure database performance. It supports all standard\n";
+        std::cout << "    YCSB workloads with configurable parameters for comprehensive\n";
+        std::cout << "    performance analysis.\n\n";
+        std::cout << "PARAMETERS\n";
+        std::cout << "    workload    YCSB workload type (A/B/C/D/E/F)\n";
+        std::cout << "    records     Number of records to preload (default: 1000)\n";
+        std::cout << "    operations  Number of operations to execute (default: 5000)\n";
+        std::cout << "    threads     Number of concurrent threads (default: 1)\n\n";
+        std::cout << "WORKLOAD TYPES\n";
+        std::cout << "    A - 50% read, 50% update (heavy update)\n";
+        std::cout << "    B - 95% read, 5% update (read mostly)\n";
+        std::cout << "    C - 100% read (read only)\n";
+        std::cout << "    D - 95% read, 5% insert (read latest)\n";
+        std::cout << "    E - 95% scan, 5% insert (short ranges)\n";
+        std::cout << "    F - 50% read, 50% read-modify-write\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    BENCHMARK A                    # Basic workload A\n";
+        std::cout << "    BENCHMARK B 10000 50000 4     # Large scale test\n";
+        std::cout << "    BENCHMARK C 1000 10000 1      # Read-only test\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns detailed performance metrics including throughput,\n";
+        std::cout << "    latency percentiles, and operation breakdown\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    STATS, CONCURRENT_TEST\n";
+        
+    } else if (command == "SET_COMPACTION") {
+        std::cout << "NAME\n";
+        std::cout << "    SET_COMPACTION - Set compaction strategy\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    SET_COMPACTION <strategy>\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The SET_COMPACTION command changes the database's compaction strategy\n";
+        std::cout << "    to optimize for different workload patterns. Each strategy has\n";
+        std::cout << "    different trade-offs between read amplification, write amplification,\n";
+        std::cout << "    and space amplification.\n\n";
+        std::cout << "PARAMETERS\n";
+        std::cout << "    strategy    Compaction strategy type\n\n";
+        std::cout << "STRATEGIES\n";
+        std::cout << "    LEVELED     - Leveled compaction (default)\n";
+        std::cout << "                  + Reduces read amplification\n";
+        std::cout << "                  + No overlapping keys in L1+\n";
+        std::cout << "                  - Higher write amplification\n\n";
+        std::cout << "    TIERED      - Tiered compaction\n";
+        std::cout << "                  + Reduces write amplification\n";
+        std::cout << "                  + Allows overlapping in all levels\n";
+        std::cout << "                  - Higher read amplification\n\n";
+        std::cout << "    SIZE_TIERED - Size-tiered compaction\n";
+        std::cout << "                  + Merges similar-sized files\n";
+        std::cout << "                  + Balanced read/write amplification\n";
+        std::cout << "                  - Complex size management\n\n";
+        std::cout << "    TIME_WINDOW - Time window compaction\n";
+        std::cout << "                  + Optimized for time-series data\n";
+        std::cout << "                  + Efficient time-based queries\n";
+        std::cout << "                  - Requires time-ordered writes\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    SET_COMPACTION LEVELED      # For read-heavy workloads\n";
+        std::cout << "    SET_COMPACTION TIERED       # For write-heavy workloads\n";
+        std::cout << "    SET_COMPACTION TIME_WINDOW   # For time-series data\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns confirmation and current compaction statistics\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    COMPACT, STATS, LSM\n";
+        
+    } else if (command == "STATS") {
+        std::cout << "NAME\n";
+        std::cout << "    STATS - Show database statistics\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    STATS\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The STATS command displays various statistics about the database\n";
+        std::cout << "    including MemTable size, WAL size, active snapshots, and cache\n";
+        std::cout << "    hit rate. This information is useful for monitoring performance\n";
+        std::cout << "    and resource usage.\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    STATS\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns formatted statistics information\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    LSM, FLUSH, COMPACT\n";
+        
+    } else if (command == "LSM") {
+        std::cout << "NAME\n";
+        std::cout << "    LSM - Show LSM tree structure\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    LSM\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The LSM command displays the current structure of the Log-Structured\n";
+        std::cout << "    Merge Tree, showing information about different levels, SSTable\n";
+        std::cout << "    files, and their organization. This is useful for understanding\n";
+        std::cout << "    the internal state of the database.\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    LSM\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns formatted LSM tree structure information\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    STATS, COMPACT, FLUSH\n";
+        
+    } else if (command == "HELP") {
+        std::cout << "NAME\n";
+        std::cout << "    HELP - Show available commands\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    HELP\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The HELP command displays a summary of all available commands\n";
+        std::cout << "    with brief descriptions. For detailed information about a\n";
+        std::cout << "    specific command, use the MAN command.\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    HELP\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns list of available commands\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    MAN\n";
+        
+    } else if (command == "MAN") {
+        std::cout << "NAME\n";
+        std::cout << "    MAN - Show detailed manual for a command\n\n";
+        std::cout << "SYNOPSIS\n";
+        std::cout << "    MAN <command>\n\n";
+        std::cout << "DESCRIPTION\n";
+        std::cout << "    The MAN command displays detailed manual pages for database\n";
+        std::cout << "    commands, including syntax, parameters, examples, and related\n";
+        std::cout << "    commands. This provides comprehensive documentation for each\n";
+        std::cout << "    available command.\n\n";
+        std::cout << "PARAMETERS\n";
+        std::cout << "    command     The command to show manual for (string)\n\n";
+        std::cout << "EXAMPLES\n";
+        std::cout << "    MAN PUT\n";
+        std::cout << "    MAN SCAN\n";
+        std::cout << "    MAN SNAPSHOT\n\n";
+        std::cout << "RETURN VALUE\n";
+        std::cout << "    Returns detailed manual page for the specified command\n\n";
+        std::cout << "SEE ALSO\n";
+        std::cout << "    HELP\n";
+        
+    } else {
+        std::cout << "No manual entry for '" << command << "'\n";
+        std::cout << "Available commands: PUT, GET, DEL, FLUSH, COMPACT, SNAPSHOT, GET_AT, RELEASE, SCAN, PREFIX_SCAN, CONCURRENT_TEST, BENCHMARK, SET_COMPACTION, STATS, LSM, HELP, MAN\n";
+        std::cout << "Use 'HELP' to see all commands or 'MAN <command>' for specific help.\n";
+    }
+}

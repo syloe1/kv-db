@@ -1,0 +1,3 @@
+/home/wk/Project/kv/build/CMakeFiles/kvdb.dir
+/home/wk/Project/kv/build/CMakeFiles/edit_cache.dir
+/home/wk/Project/kv/build/CMakeFiles/rebuild_cache.dir
