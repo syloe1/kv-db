@@ -1,3 +1,10 @@
 build/
+<<<<<<< HEAD
 build/
 build/
+=======
+>>>>>>> cc24aa4eae4edea13c40a5b76ae3281181c6a76a
+build/
+kv
+*.log
+*.sst
