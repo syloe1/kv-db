@@ -1,6 +1,7 @@
 #pragma once
 #include "storage/memtable.h"
 #include "log/wal.h"
+<<<<<<< HEAD
 #include "cache/block_cache.h"
 #include "sstable/sstable_meta.h"
 #include "version/version_set.h"
@@ -15,10 +16,13 @@
 #include <atomic>
 #include <mutex>
 #include <memory>
+=======
+>>>>>>> cc24aa4eae4edea13c40a5b76ae3281181c6a76a
 
 class KVDB {
 public:
     explicit KVDB(const std::string& wal_file);
+<<<<<<< HEAD
     ~KVDB();
     
     bool put(const std::string& key, const std::string& value);
@@ -112,3 +116,14 @@ private:
     std::atomic<bool> compaction_requested_{false};
     std::atomic<bool> stop_{false};
 };
+=======
+
+    bool put(const std::string& key, const std::string& value);
+    bool get(const std::string& key, std::string& value);
+    bool del(const std::string& key);
+
+private:
+    MemTable memtable_;
+    WAL wal_;
+};
+>>>>>>> cc24aa4eae4edea13c40a5b76ae3281181c6a76a

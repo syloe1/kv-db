@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #include "storage/memtable.h"
 
 static const std::string TOMBSTONE = "__TOMBSTONE__";
@@ -42,3 +43,21 @@ void MemTable::clear() {
     table_.clear();
     size_bytes_ = 0;
 }
+=======
+#include "memtable.h"
+
+void MemTable::put(const std::string& key, const std::string& value) {
+    table_[key] = value;
+}
+
+bool MemTable::get(const std::string& key, std::string& value) {
+    auto it = table_.find(key);
+    if (it == table_.end()) return false;
+    value = it->second;
+    return true;
+}
+
+void MemTable::del(const std::string& key) {
+    table_.erase(key);
+}
+>>>>>>> cc24aa4eae4edea13c40a5b76ae3281181c6a76a

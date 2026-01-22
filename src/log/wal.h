@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <functional>
+<<<<<<< HEAD
 #include <iostream>
 #include <sstream>
 #ifdef __has_include
@@ -15,6 +16,8 @@
 #        error "No filesystem support"
 #    endif
 #endif
+=======
+>>>>>>> cc24aa4eae4edea13c40a5b76ae3281181c6a76a
 
 class WAL {
 public:
@@ -22,6 +25,7 @@ public:
     void log_put(const std::string& key, const std::string& value);
     void log_del(const std::string& key);
 
+<<<<<<< HEAD
     void replay (
         const std::function<void(const std::string&, const std::string&)>& on_put,
         const std::function<void(const std::string&)>& on_del
@@ -32,3 +36,13 @@ private:
     std::ofstream file_;
     std::string filename_;
 };
+=======
+    void replay(
+        const std::function<void(const std::string& ,const std::string&)>& on_put,
+        const std::function<void(const std::string&)>& on_del
+    );
+private:
+    std::ofstream file_;
+    std::string filename_;
+};
+>>>>>>> cc24aa4eae4edea13c40a5b76ae3281181c6a76a
