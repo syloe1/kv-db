@@ -1,4 +1,5 @@
 #include "cli/repl.h"
+#include "query/query_engine.h"
 #include "iterator/iterator.h"
 #include "benchmark/ycsb_benchmark.h"
 #ifdef ENABLE_NETWORK
@@ -24,6 +25,8 @@ std::vector<std::string> REPL::commands_ = {
     "CONCURRENT_TEST", "BENCHMARK", "SET_COMPACTION", 
     "START_NETWORK", "STOP_NETWORK", "STATS", "LSM", "HELP", "MAN", 
     "SOURCE", "MULTILINE", "HIGHLIGHT", "HISTORY", "CLEAR", "ECHO",
+    // 新增高级查询命令
+    "BATCH", "GET_WHERE", "COUNT", "SUM", "AVG", "MIN_MAX", "SCAN_ORDER",
     "EXIT", "QUIT"
 };
 
@@ -44,6 +47,7 @@ const std::string REPL::DIM = "\033[2m";
 REPL::REPL(KVDB& db) : db_(db), multi_line_mode_(false), script_mode_(false), syntax_highlighting_(true) {
     setup_readline();
     setup_colors();
+    query_engine_ = std::make_unique<QueryEngine>(db_);
 #ifdef ENABLE_NETWORK
     network_server_ = std::make_unique<NetworkServer>(db_);
 #endif
@@ -96,6 +100,15 @@ void REPL::setup_colors() {
     color_map_["ECHO"] = GREEN;
     color_map_["EXIT"] = RED + BOLD;
     color_map_["QUIT"] = RED + BOLD;
+    
+    // 新增高级查询命令颜色
+    color_map_["BATCH"] = MAGENTA + BOLD;
+    color_map_["GET_WHERE"] = BLUE + BOLD;
+    color_map_["COUNT"] = CYAN + BOLD;
+    color_map_["SUM"] = CYAN + BOLD;
+    color_map_["AVG"] = CYAN + BOLD;
+    color_map_["MIN_MAX"] = CYAN + BOLD;
+    color_map_["SCAN_ORDER"] = CYAN + BOLD;
 }
 
 std::string REPL::apply_syntax_highlighting(const std::string& line) {
@@ -586,6 +599,38 @@ void REPL::execute_command(const std::vector<std::string>& tokens) {
             cmd_clear();
         } else if (cmd == "ECHO") {
             cmd_echo(tokens);
+        } else if (cmd == "BATCH") {
+            // 批量操作：BATCH PUT key1 val1 key2 val2 ... 或 BATCH GET key1 key2 ... 或 BATCH DEL key1 key2 ...
+            if (tokens.size() >= 2) {
+                std::string sub_cmd = tokens[1];
+                for (char& c : sub_cmd) {
+                    c = std::toupper(c);
+                }
+                
+                if (sub_cmd == "PUT") {
+                    cmd_batch_put(tokens);
+                } else if (sub_cmd == "GET") {
+                    cmd_batch_get(tokens);
+                } else if (sub_cmd == "DEL") {
+                    cmd_batch_del(tokens);
+                } else {
+                    std::cout << "Usage: BATCH <PUT|GET|DEL> <args...>\n";
+                }
+            } else {
+                std::cout << "Usage: BATCH <PUT|GET|DEL> <args...>\n";
+            }
+        } else if (cmd == "GET_WHERE") {
+            cmd_get_where(tokens);
+        } else if (cmd == "COUNT") {
+            cmd_count(tokens);
+        } else if (cmd == "SUM") {
+            cmd_sum(tokens);
+        } else if (cmd == "AVG") {
+            cmd_avg(tokens);
+        } else if (cmd == "MIN_MAX") {
+            cmd_min_max(tokens);
+        } else if (cmd == "SCAN_ORDER") {
+            cmd_scan_ordered(tokens);
         } else {
             if (syntax_highlighting_) {
                 std::cout << RED << "Unknown command: " << cmd << RESET << ". Type " 
@@ -1031,6 +1076,14 @@ void REPL::cmd_help() {
 #endif
         std::cout << "  " << WHITE << BOLD << "STATS" << RESET << "                      - Show database statistics\n";
         std::cout << "  " << WHITE << BOLD << "LSM" << RESET << "                        - Show LSM tree structure\n";
+        std::cout << "\n" << BOLD << MAGENTA << "Advanced Query Features:" << RESET << "\n";
+        std::cout << "  " << MAGENTA << BOLD << "BATCH" << RESET << " <PUT|GET|DEL> <args> - Batch operations\n";
+        std::cout << "  " << BLUE << BOLD << "GET_WHERE" << RESET << " <field> <op> <val> - Conditional queries\n";
+        std::cout << "  " << CYAN << BOLD << "COUNT" << RESET << " [WHERE ...]          - Count records\n";
+        std::cout << "  " << CYAN << BOLD << "SUM" << RESET << " [pattern]             - Sum numeric values\n";
+        std::cout << "  " << CYAN << BOLD << "AVG" << RESET << " [pattern]             - Average numeric values\n";
+        std::cout << "  " << CYAN << BOLD << "MIN_MAX" << RESET << " [pattern]          - Min/Max numeric values\n";
+        std::cout << "  " << CYAN << BOLD << "SCAN_ORDER" << RESET << " <ASC|DESC> [...]  - Ordered range scan\n";
         std::cout << "\n" << BOLD << YELLOW << "Enhanced CLI Features:" << RESET << "\n";
         std::cout << "  " << MAGENTA << "SOURCE" << RESET << " <filename>         - Execute commands from script file\n";
         std::cout << "  " << YELLOW << "MULTILINE" << RESET << " <ON|OFF|STATUS>  - Control multi-line input mode\n";
@@ -1068,6 +1121,14 @@ void REPL::cmd_help() {
 #endif
         std::cout << "  STATS                      - Show database statistics\n";
         std::cout << "  LSM                        - Show LSM tree structure\n";
+        std::cout << "\nAdvanced Query Features:\n";
+        std::cout << "  BATCH <PUT|GET|DEL> <args> - Batch operations\n";
+        std::cout << "  GET_WHERE <field> <op> <val> - Conditional queries\n";
+        std::cout << "  COUNT [WHERE ...]          - Count records\n";
+        std::cout << "  SUM [pattern]              - Sum numeric values\n";
+        std::cout << "  AVG [pattern]              - Average numeric values\n";
+        std::cout << "  MIN_MAX [pattern]          - Min/Max numeric values\n";
+        std::cout << "  SCAN_ORDER <ASC|DESC> [...] - Ordered range scan\n";
         std::cout << "\nEnhanced CLI Features:\n";
         std::cout << "  SOURCE <filename>          - Execute commands from script file\n";
         std::cout << "  MULTILINE <ON|OFF|STATUS>  - Control multi-line input mode\n";
@@ -1694,5 +1755,307 @@ void REPL::cmd_echo(const std::vector<std::string>& tokens) {
         std::cout << GREEN << message << RESET << std::endl;
     } else {
         std::cout << message << std::endl;
+    }
+}
+
+// 高级查询命令实现
+void REPL::cmd_batch_put(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 4 || (tokens.size() - 2) % 2 != 0) {
+        std::cout << "Usage: BATCH PUT <key1> <value1> [key2] [value2] ...\n";
+        std::cout << "Example: BATCH PUT user:1 John user:2 Jane user:3 Bob\n";
+        return;
+    }
+    
+    std::vector<std::pair<std::string, std::string>> pairs;
+    for (size_t i = 2; i < tokens.size(); i += 2) {
+        pairs.emplace_back(tokens[i], tokens[i + 1]);
+    }
+    
+    if (query_engine_->batch_put(pairs)) {
+        std::cout << "Batch PUT completed: " << pairs.size() << " key-value pairs inserted\n";
+    } else {
+        std::cout << "Batch PUT failed\n";
+    }
+}
+
+void REPL::cmd_batch_get(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 3) {
+        std::cout << "Usage: BATCH GET <key1> [key2] [key3] ...\n";
+        std::cout << "Example: BATCH GET user:1 user:2 user:3\n";
+        return;
+    }
+    
+    std::vector<std::string> keys;
+    for (size_t i = 2; i < tokens.size(); i++) {
+        keys.push_back(tokens[i]);
+    }
+    
+    QueryResult result = query_engine_->batch_get(keys);
+    
+    if (result.success) {
+        std::cout << "=== Batch GET Results ===\n";
+        for (const auto& pair : result.results) {
+            std::cout << pair.first << " = " << pair.second << "\n";
+        }
+        std::cout << "Found " << result.total_count << " out of " << keys.size() << " keys\n";
+    } else {
+        std::cout << "Batch GET failed: " << result.error_message << "\n";
+    }
+}
+
+void REPL::cmd_batch_del(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 3) {
+        std::cout << "Usage: BATCH DEL <key1> [key2] [key3] ...\n";
+        std::cout << "Example: BATCH DEL user:1 user:2 user:3\n";
+        return;
+    }
+    
+    std::vector<std::string> keys;
+    for (size_t i = 2; i < tokens.size(); i++) {
+        keys.push_back(tokens[i]);
+    }
+    
+    if (query_engine_->batch_delete(keys)) {
+        std::cout << "Batch DELETE completed: " << keys.size() << " keys deleted\n";
+    } else {
+        std::cout << "Batch DELETE failed\n";
+    }
+}
+
+void REPL::cmd_get_where(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 5) {
+        std::cout << "Usage: GET_WHERE <field> <operator> <value> [LIMIT <n>]\n";
+        std::cout << "Fields: key, value\n";
+        std::cout << "Operators: =, !=, LIKE, NOT_LIKE, >, <, >=, <=\n";
+        std::cout << "Examples:\n";
+        std::cout << "  GET_WHERE key LIKE 'user:*'\n";
+        std::cout << "  GET_WHERE value > '100'\n";
+        std::cout << "  GET_WHERE key = 'config:timeout' LIMIT 10\n";
+        return;
+    }
+    
+    std::string field = tokens[1];
+    std::string op_str = tokens[2];
+    std::string value = tokens[3];
+    
+    // 解析操作符
+    ConditionOperator op;
+    if (op_str == "=" || op_str == "==") {
+        op = ConditionOperator::EQUALS;
+    } else if (op_str == "!=" || op_str == "<>") {
+        op = ConditionOperator::NOT_EQUALS;
+    } else if (op_str == "LIKE") {
+        op = ConditionOperator::LIKE;
+    } else if (op_str == "NOT_LIKE") {
+        op = ConditionOperator::NOT_LIKE;
+    } else if (op_str == ">") {
+        op = ConditionOperator::GREATER_THAN;
+    } else if (op_str == "<") {
+        op = ConditionOperator::LESS_THAN;
+    } else if (op_str == ">=") {
+        op = ConditionOperator::GREATER_EQUAL;
+    } else if (op_str == "<=") {
+        op = ConditionOperator::LESS_EQUAL;
+    } else {
+        std::cout << "Invalid operator: " << op_str << "\n";
+        return;
+    }
+    
+    // 解析限制
+    size_t limit = 0;
+    if (tokens.size() >= 6 && tokens[4] == "LIMIT") {
+        try {
+            limit = std::stoull(tokens[5]);
+        } catch (const std::exception&) {
+            std::cout << "Invalid limit value: " << tokens[5] << "\n";
+            return;
+        }
+    }
+    
+    QueryCondition condition(field, op, value);
+    QueryResult result = query_engine_->query_where(condition, limit);
+    
+    if (result.success) {
+        std::cout << "=== Query Results ===\n";
+        for (const auto& pair : result.results) {
+            std::cout << pair.first << " = " << pair.second << "\n";
+        }
+        std::cout << "Found " << result.total_count << " matching records\n";
+    } else {
+        std::cout << "Query failed: " << result.error_message << "\n";
+    }
+}
+
+void REPL::cmd_count(const std::vector<std::string>& tokens) {
+    if (tokens.size() == 1) {
+        // COUNT - 计算所有记录数
+        AggregateResult result = query_engine_->count_all();
+        if (result.success) {
+            std::cout << "Total records: " << result.count << "\n";
+        } else {
+            std::cout << "Count failed: " << result.error_message << "\n";
+        }
+    } else if (tokens.size() >= 4) {
+        // COUNT WHERE field operator value
+        std::string field = tokens[2];
+        std::string op_str = tokens[3];
+        std::string value = tokens[4];
+        
+        // 解析操作符
+        ConditionOperator op;
+        if (op_str == "=" || op_str == "==") {
+            op = ConditionOperator::EQUALS;
+        } else if (op_str == "LIKE") {
+            op = ConditionOperator::LIKE;
+        } else {
+            std::cout << "Unsupported operator for COUNT: " << op_str << "\n";
+            return;
+        }
+        
+        QueryCondition condition(field, op, value);
+        AggregateResult result = query_engine_->count_where(condition);
+        
+        if (result.success) {
+            std::cout << "Matching records: " << result.count << "\n";
+        } else {
+            std::cout << "Count failed: " << result.error_message << "\n";
+        }
+    } else {
+        std::cout << "Usage:\n";
+        std::cout << "  COUNT                           - Count all records\n";
+        std::cout << "  COUNT WHERE <field> <op> <val>  - Count matching records\n";
+        std::cout << "Examples:\n";
+        std::cout << "  COUNT\n";
+        std::cout << "  COUNT WHERE key LIKE 'user:*'\n";
+    }
+}
+
+void REPL::cmd_sum(const std::vector<std::string>& tokens) {
+    std::string pattern = "";
+    if (tokens.size() >= 2) {
+        pattern = tokens[1];
+    }
+    
+    AggregateResult result = query_engine_->sum_values(pattern);
+    
+    if (result.success) {
+        std::cout << "=== Sum Results ===\n";
+        std::cout << "Count: " << result.count << "\n";
+        std::cout << "Sum: " << result.sum << "\n";
+        std::cout << "Average: " << result.avg << "\n";
+    } else {
+        std::cout << "Sum failed: " << result.error_message << "\n";
+    }
+    
+    if (tokens.size() < 2) {
+        std::cout << "\nUsage: SUM [key_pattern]\n";
+        std::cout << "Example: SUM 'score:*' - Sum all values for keys matching 'score:*'\n";
+    }
+}
+
+void REPL::cmd_avg(const std::vector<std::string>& tokens) {
+    std::string pattern = "";
+    if (tokens.size() >= 2) {
+        pattern = tokens[1];
+    }
+    
+    AggregateResult result = query_engine_->avg_values(pattern);
+    
+    if (result.success) {
+        std::cout << "=== Average Results ===\n";
+        std::cout << "Count: " << result.count << "\n";
+        std::cout << "Sum: " << result.sum << "\n";
+        std::cout << "Average: " << result.avg << "\n";
+    } else {
+        std::cout << "Average failed: " << result.error_message << "\n";
+    }
+    
+    if (tokens.size() < 2) {
+        std::cout << "\nUsage: AVG [key_pattern]\n";
+        std::cout << "Example: AVG 'price:*' - Average all values for keys matching 'price:*'\n";
+    }
+}
+
+void REPL::cmd_min_max(const std::vector<std::string>& tokens) {
+    std::string pattern = "";
+    if (tokens.size() >= 2) {
+        pattern = tokens[1];
+    }
+    
+    AggregateResult result = query_engine_->min_max_values(pattern);
+    
+    if (result.success) {
+        std::cout << "=== Min/Max Results ===\n";
+        std::cout << "Count: " << result.count << "\n";
+        std::cout << "Sum: " << result.sum << "\n";
+        std::cout << "Average: " << result.avg << "\n";
+        std::cout << "Minimum: " << result.min << "\n";
+        std::cout << "Maximum: " << result.max << "\n";
+    } else {
+        std::cout << "Min/Max failed: " << result.error_message << "\n";
+    }
+    
+    if (tokens.size() < 2) {
+        std::cout << "\nUsage: MIN_MAX [key_pattern]\n";
+        std::cout << "Example: MIN_MAX 'temperature:*' - Min/Max for keys matching 'temperature:*'\n";
+    }
+}
+
+void REPL::cmd_scan_ordered(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: SCAN_ORDER <ASC|DESC> [start_key] [end_key] [LIMIT <n>]\n";
+        std::cout << "Examples:\n";
+        std::cout << "  SCAN_ORDER ASC                    - Scan all in ascending order\n";
+        std::cout << "  SCAN_ORDER DESC user:1 user:9     - Scan range in descending order\n";
+        std::cout << "  SCAN_ORDER ASC '' '' LIMIT 10     - First 10 records in ascending order\n";
+        return;
+    }
+    
+    std::string order_str = tokens[1];
+    SortOrder order;
+    if (order_str == "ASC") {
+        order = SortOrder::ASC;
+    } else if (order_str == "DESC") {
+        order = SortOrder::DESC;
+    } else {
+        std::cout << "Invalid order: " << order_str << ". Use ASC or DESC\n";
+        return;
+    }
+    
+    std::string start_key = "";
+    std::string end_key = "";
+    size_t limit = 0;
+    
+    if (tokens.size() >= 3) {
+        start_key = tokens[2];
+    }
+    if (tokens.size() >= 4) {
+        end_key = tokens[3];
+    }
+    
+    // 解析LIMIT
+    for (size_t i = 4; i < tokens.size(); i++) {
+        if (tokens[i] == "LIMIT" && i + 1 < tokens.size()) {
+            try {
+                limit = std::stoull(tokens[i + 1]);
+            } catch (const std::exception&) {
+                std::cout << "Invalid limit value: " << tokens[i + 1] << "\n";
+                return;
+            }
+            break;
+        }
+    }
+    
+    QueryResult result = query_engine_->scan_ordered(start_key, end_key, order, limit);
+    
+    if (result.success) {
+        std::cout << "=== Ordered Scan Results ===\n";
+        for (const auto& pair : result.results) {
+            std::cout << pair.first << " = " << pair.second << "\n";
+        }
+        std::cout << "Found " << result.total_count << " records (order: " 
+                  << (order == SortOrder::ASC ? "ASC" : "DESC") << ")\n";
+    } else {
+        std::cout << "Ordered scan failed: " << result.error_message << "\n";
     }
 }

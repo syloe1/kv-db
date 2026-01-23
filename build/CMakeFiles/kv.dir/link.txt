@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/kv.dir/src/main.cpp.o CMakeFiles/kv.dir/src/db/kv_db.cpp.o CMakeFiles/kv.dir/src/log/wal.cpp.o CMakeFiles/kv.dir/src/storage/memtable.cpp.o -o kv 

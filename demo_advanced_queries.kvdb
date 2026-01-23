@@ -1,0 +1,106 @@
+# 高级查询功能演示脚本
+# 使用方法: SOURCE demo_advanced_queries.kvdb
+
+ECHO "=== KVDB 高级查询功能演示 ==="
+
+# 1. 批量操作演示
+ECHO ""
+ECHO "1. 批量操作演示"
+ECHO "插入用户数据..."
+BATCH PUT user:1 Alice user:2 Bob user:3 Charlie user:4 Diana
+
+ECHO "插入分数数据..."
+BATCH PUT score:1 95 score:2 87 score:3 92 score:4 88
+
+ECHO "插入价格数据..."
+BATCH PUT price:laptop 1200 price:mouse 25 price:keyboard 80 price:monitor 300
+
+ECHO "批量获取用户数据:"
+BATCH GET user:1 user:2 user:3 user:4
+
+# 2. 条件查询演示
+ECHO ""
+ECHO "2. 条件查询演示"
+ECHO "查找所有用户 (key LIKE 'user:*'):"
+GET_WHERE key LIKE user:*
+
+ECHO "查找高分 (value > '90'):"
+GET_WHERE value > 90
+
+ECHO "查找价格大于100的商品:"
+GET_WHERE key LIKE price:* 
+GET_WHERE value > 100
+
+# 3. 聚合查询演示
+ECHO ""
+ECHO "3. 聚合查询演示"
+ECHO "统计总记录数:"
+COUNT
+
+ECHO "统计用户数量:"
+COUNT WHERE key LIKE user:*
+
+ECHO "计算分数统计:"
+SUM score:*
+
+ECHO "计算价格统计:"
+AVG price:*
+
+ECHO "价格范围分析:"
+MIN_MAX price:*
+
+# 4. 排序查询演示
+ECHO ""
+ECHO "4. 排序查询演示"
+ECHO "升序扫描所有数据:"
+SCAN_ORDER ASC LIMIT 10
+
+ECHO "降序扫描用户数据:"
+SCAN_ORDER DESC user:1 user:9
+
+ECHO "升序扫描价格数据:"
+SCAN_ORDER ASC price: price:z
+
+# 5. 复合操作演示
+ECHO ""
+ECHO "5. 复合操作演示"
+ECHO "添加更多测试数据..."
+PUT category:electronics active
+PUT category:books active
+PUT category:clothing inactive
+PUT status:system online
+PUT status:backup offline
+
+ECHO "查找活跃类别:"
+GET_WHERE value = active
+
+ECHO "查找系统状态:"
+GET_WHERE key LIKE status:*
+
+# 6. 数值操作演示
+ECHO ""
+ECHO "6. 数值操作演示"
+ECHO "添加温度数据..."
+PUT temp:morning 23.5
+PUT temp:noon 28.2
+PUT temp:evening 25.8
+PUT temp:night 21.3
+
+ECHO "温度统计分析:"
+MIN_MAX temp:*
+
+ECHO "平均温度:"
+AVG temp:*
+
+# 7. 清理演示
+ECHO ""
+ECHO "7. 批量删除演示"
+ECHO "删除部分测试数据..."
+BATCH DEL temp:morning temp:noon
+
+ECHO "验证删除结果:"
+GET_WHERE key LIKE temp:*
+
+ECHO ""
+ECHO "=== 演示完成 ==="
+ECHO "您可以继续尝试其他查询命令!"

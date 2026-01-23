@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #include "log/wal.h"
 #include <fstream>
 #include <sstream>
@@ -30,28 +29,11 @@ WAL::WAL(const std::string& filename)
 
 void WAL::log_put(const std::string& key, const std::string& value) {
     file_ << "PUT " << key << " " << value << "\n";
-=======
-#include "wal.h"
-#include <fstream>
-#include <sstream>
-
-WAL::WAL(const std::string& filename)
-    : filename_(filename) {
-    file_.open(filename_, std::ios::app);
-}
-
-void WAL::log_put(const std::string& key, const std::string& value) {
-    file_<< "PUT "<< key << " " << value << "\n";
->>>>>>> cc24aa4eae4edea13c40a5b76ae3281181c6a76a
     file_.flush();
 }
 
 void WAL::log_del(const std::string& key) {
-<<<<<<< HEAD
     file_ << "DEL " << key << "\n";
-=======
-    file_ << "DEL " << key << '\n';
->>>>>>> cc24aa4eae4edea13c40a5b76ae3281181c6a76a
     file_.flush();
 }
 
@@ -59,7 +41,6 @@ void WAL::replay(
     const std::function<void(const std::string&, const std::string&)>& on_put,
     const std::function<void(const std::string&)>& on_del
 ) {
-<<<<<<< HEAD
     std::cout << "[WAL重放] 开始重放WAL文件: " << filename_ << std::endl;
     
     std::ifstream in(filename_);
@@ -96,22 +77,3 @@ void WAL::replay(
     
     std::cout << "[WAL重放] 完成，共处理 " << line_count << " 行" << std::endl;
 }
-=======
-    std::ifstream in(filename_);
-    std::string line;
-    while(std::getline(in, line)) {
-        std::istringstream iss(line);
-        std::string cmd;
-        iss >> cmd;
-        if(cmd == "PUT") {
-            std::string key, value;
-            iss >> key >> value;
-            on_put(key, value);
-        } else if(cmd == "DEL") {
-            std::string key;
-            iss >> key;
-            on_del(key);
-        }
-    }
-}
->>>>>>> cc24aa4eae4edea13c40a5b76ae3281181c6a76a

@@ -1,5 +1,6 @@
 #pragma once
 #include "db/kv_db.h"
+#include "query/query_engine.h"
 #ifdef ENABLE_NETWORK
 #include "network/network_server.h"
 #endif
@@ -17,6 +18,7 @@ public:
 
 private:
     KVDB& db_;
+    std::unique_ptr<QueryEngine> query_engine_;
 #ifdef ENABLE_NETWORK
     std::unique_ptr<NetworkServer> network_server_;  // 网络服务器
 #endif
@@ -101,6 +103,17 @@ private:
     void cmd_history(const std::vector<std::string>& tokens);   // 历史记录管理
     void cmd_clear();  // 清屏
     void cmd_echo(const std::vector<std::string>& tokens);  // 回显命令
+    
+    // 新增高级查询命令
+    void cmd_batch_put(const std::vector<std::string>& tokens);
+    void cmd_batch_get(const std::vector<std::string>& tokens);
+    void cmd_batch_del(const std::vector<std::string>& tokens);
+    void cmd_get_where(const std::vector<std::string>& tokens);
+    void cmd_count(const std::vector<std::string>& tokens);
+    void cmd_sum(const std::vector<std::string>& tokens);
+    void cmd_avg(const std::vector<std::string>& tokens);
+    void cmd_min_max(const std::vector<std::string>& tokens);
+    void cmd_scan_ordered(const std::vector<std::string>& tokens);
     
     // 帮助系统相关
     bool is_help_request(const std::vector<std::string>& tokens);

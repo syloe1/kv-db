@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
-<<<<<<< HEAD
 project(kvdb VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 
 # 检查是否支持网络功能
 option(ENABLE_NETWORK "Enable network interfaces (gRPC and WebSocket)" OFF)
@@ -33,6 +31,8 @@ set(KVDB_SOURCES
     src/cli/repl.cpp
     src/network/tcp_server.cpp
     src/network/http_server.cpp
+    # 新增查询引擎
+    src/query/query_engine.cpp
 )
 
 # 网络功能源文件
@@ -142,28 +142,3 @@ endif()
 
 # 头文件目录
 target_include_directories(kvdb PRIVATE src)
-=======
-project(kv)
-
-set(CMAKE_CXX_STANDARD 17)
-
-# 添加头文件搜索路径
-include_directories(src)
-
-# 主程序
-add_executable(kv
-    src/main.cpp
-    src/db/kv_db.cpp
-    src/log/wal.cpp
-    src/storage/memtable.cpp
-)
-
-# 写入数据测试程序
-add_executable(write_data
-    src/write_data.cpp
-    src/db/kv_db.cpp
-    src/log/wal.cpp
-    src/storage/memtable.cpp
-)
-
->>>>>>> cc24aa4eae4edea13c40a5b76ae3281181c6a76a
