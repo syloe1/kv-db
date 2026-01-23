@@ -204,3 +204,26 @@ endif()
 
 # 头文件目录
 target_include_directories(kvdb PRIVATE src)
+
+# 分布式系统源文件
+set(DISTRIBUTED_SOURCES
+    src/distributed/shard_manager.cpp
+    src/distributed/load_balancer.cpp
+    src/distributed/failover_manager.cpp
+    src/distributed/distributed_kvdb.cpp
+)
+
+# 添加分布式系统库
+add_library(distributed_kvdb ${DISTRIBUTED_SOURCES})
+target_link_libraries(distributed_kvdb pthread)
+target_include_directories(distributed_kvdb PRIVATE src)
+
+# 分布式系统测试
+add_executable(test_distributed_simple test_distributed_simple.cpp)
+target_link_libraries(test_distributed_simple distributed_kvdb pthread)
+target_include_directories(test_distributed_simple PRIVATE src)
+
+# 分布式系统演示
+add_executable(distributed_demo distributed_demo.cpp)
+target_link_libraries(distributed_demo distributed_kvdb pthread)
+target_include_directories(distributed_demo PRIVATE src)

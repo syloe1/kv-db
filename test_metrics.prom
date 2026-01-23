@@ -1,0 +1,18 @@
+# HELP kvdb_qps Queries per second
+# TYPE kvdb_qps gauge
+kvdb_qps 20
+# HELP kvdb_latency_avg Average latency in milliseconds
+# TYPE kvdb_latency_avg gauge
+kvdb_latency_avg 34.5
+# HELP kvdb_latency_p99 P99 latency in milliseconds
+# TYPE kvdb_latency_p99 gauge
+kvdb_latency_p99 43
+# HELP kvdb_cpu_usage CPU usage percentage
+# TYPE kvdb_cpu_usage gauge
+kvdb_cpu_usage 0.258844
+# HELP kvdb_memory_usage Memory usage in bytes
+# TYPE kvdb_memory_usage gauge
+kvdb_memory_usage 7830097920
+# HELP kvdb_total_keys Total number of keys
+# TYPE kvdb_total_keys gauge
+kvdb_total_keys 0
