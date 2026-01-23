@@ -21,6 +21,8 @@ set(KVDB_SOURCES
     src/compaction/compaction_strategy.cpp
     src/bloom/bloom_filter.cpp
     src/cache/block_cache.cpp
+    src/cache/cache_manager.cpp
+    src/cache/multi_level_cache.cpp
     src/version/version_set.cpp
     src/snapshot/snapshot_manager.cpp
     src/iterator/memtable_iterator.cpp

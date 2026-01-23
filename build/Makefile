@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/wk/Project/kv
+CMAKE_SOURCE_DIR = /home/wk/Project/kv-db
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/wk/Project/kv/build
+CMAKE_BINARY_DIR = /home/wk/Project/kv-db/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/wk/Project/kv/build/CMakeFiles /home/wk/Project/kv/build//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/wk/Project/kv-db/build/CMakeFiles /home/wk/Project/kv-db/build//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/wk/Project/kv/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/wk/Project/kv-db/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -128,6 +128,69 @@ kvdb: cmake_check_build_system
 kvdb/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/build
 .PHONY : kvdb/fast
+
+#=============================================================================
+# Target rules for targets named distributed_kvdb
+
+# Build rule for target.
+distributed_kvdb: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 distributed_kvdb
+.PHONY : distributed_kvdb
+
+# fast build rule for target.
+distributed_kvdb/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_kvdb.dir/build.make CMakeFiles/distributed_kvdb.dir/build
+.PHONY : distributed_kvdb/fast
+
+#=============================================================================
+# Target rules for targets named test_distributed_simple
+
+# Build rule for target.
+test_distributed_simple: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_distributed_simple
+.PHONY : test_distributed_simple
+
+# fast build rule for target.
+test_distributed_simple/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_distributed_simple.dir/build.make CMakeFiles/test_distributed_simple.dir/build
+.PHONY : test_distributed_simple/fast
+
+#=============================================================================
+# Target rules for targets named distributed_demo
+
+# Build rule for target.
+distributed_demo: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 distributed_demo
+.PHONY : distributed_demo
+
+# fast build rule for target.
+distributed_demo/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_demo.dir/build.make CMakeFiles/distributed_demo.dir/build
+.PHONY : distributed_demo/fast
+
+distributed_demo.o: distributed_demo.cpp.o
+.PHONY : distributed_demo.o
+
+# target to build an object file
+distributed_demo.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_demo.dir/build.make CMakeFiles/distributed_demo.dir/distributed_demo.cpp.o
+.PHONY : distributed_demo.cpp.o
+
+distributed_demo.i: distributed_demo.cpp.i
+.PHONY : distributed_demo.i
+
+# target to preprocess a source file
+distributed_demo.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_demo.dir/build.make CMakeFiles/distributed_demo.dir/distributed_demo.cpp.i
+.PHONY : distributed_demo.cpp.i
+
+distributed_demo.s: distributed_demo.cpp.s
+.PHONY : distributed_demo.s
+
+# target to generate assembly for a file
+distributed_demo.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_demo.dir/build.make CMakeFiles/distributed_demo.dir/distributed_demo.cpp.s
+.PHONY : distributed_demo.cpp.s
 
 src/benchmark/ycsb_benchmark.o: src/benchmark/ycsb_benchmark.cpp.o
 .PHONY : src/benchmark/ycsb_benchmark.o
@@ -200,6 +263,54 @@ src/cache/block_cache.s: src/cache/block_cache.cpp.s
 src/cache/block_cache.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/cache/block_cache.cpp.s
 .PHONY : src/cache/block_cache.cpp.s
+
+src/cache/cache_manager.o: src/cache/cache_manager.cpp.o
+.PHONY : src/cache/cache_manager.o
+
+# target to build an object file
+src/cache/cache_manager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/cache/cache_manager.cpp.o
+.PHONY : src/cache/cache_manager.cpp.o
+
+src/cache/cache_manager.i: src/cache/cache_manager.cpp.i
+.PHONY : src/cache/cache_manager.i
+
+# target to preprocess a source file
+src/cache/cache_manager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/cache/cache_manager.cpp.i
+.PHONY : src/cache/cache_manager.cpp.i
+
+src/cache/cache_manager.s: src/cache/cache_manager.cpp.s
+.PHONY : src/cache/cache_manager.s
+
+# target to generate assembly for a file
+src/cache/cache_manager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/cache/cache_manager.cpp.s
+.PHONY : src/cache/cache_manager.cpp.s
+
+src/cache/multi_level_cache.o: src/cache/multi_level_cache.cpp.o
+.PHONY : src/cache/multi_level_cache.o
+
+# target to build an object file
+src/cache/multi_level_cache.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/cache/multi_level_cache.cpp.o
+.PHONY : src/cache/multi_level_cache.cpp.o
+
+src/cache/multi_level_cache.i: src/cache/multi_level_cache.cpp.i
+.PHONY : src/cache/multi_level_cache.i
+
+# target to preprocess a source file
+src/cache/multi_level_cache.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/cache/multi_level_cache.cpp.i
+.PHONY : src/cache/multi_level_cache.cpp.i
+
+src/cache/multi_level_cache.s: src/cache/multi_level_cache.cpp.s
+.PHONY : src/cache/multi_level_cache.s
+
+# target to generate assembly for a file
+src/cache/multi_level_cache.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/cache/multi_level_cache.cpp.s
+.PHONY : src/cache/multi_level_cache.cpp.s
 
 src/cli/repl.o: src/cli/repl.cpp.o
 .PHONY : src/cli/repl.o
@@ -296,6 +407,294 @@ src/db/kv_db.s: src/db/kv_db.cpp.s
 src/db/kv_db.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/db/kv_db.cpp.s
 .PHONY : src/db/kv_db.cpp.s
+
+src/db/typed_kv_db.o: src/db/typed_kv_db.cpp.o
+.PHONY : src/db/typed_kv_db.o
+
+# target to build an object file
+src/db/typed_kv_db.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/db/typed_kv_db.cpp.o
+.PHONY : src/db/typed_kv_db.cpp.o
+
+src/db/typed_kv_db.i: src/db/typed_kv_db.cpp.i
+.PHONY : src/db/typed_kv_db.i
+
+# target to preprocess a source file
+src/db/typed_kv_db.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/db/typed_kv_db.cpp.i
+.PHONY : src/db/typed_kv_db.cpp.i
+
+src/db/typed_kv_db.s: src/db/typed_kv_db.cpp.s
+.PHONY : src/db/typed_kv_db.s
+
+# target to generate assembly for a file
+src/db/typed_kv_db.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/db/typed_kv_db.cpp.s
+.PHONY : src/db/typed_kv_db.cpp.s
+
+src/distributed/distributed_kvdb.o: src/distributed/distributed_kvdb.cpp.o
+.PHONY : src/distributed/distributed_kvdb.o
+
+# target to build an object file
+src/distributed/distributed_kvdb.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_kvdb.dir/build.make CMakeFiles/distributed_kvdb.dir/src/distributed/distributed_kvdb.cpp.o
+.PHONY : src/distributed/distributed_kvdb.cpp.o
+
+src/distributed/distributed_kvdb.i: src/distributed/distributed_kvdb.cpp.i
+.PHONY : src/distributed/distributed_kvdb.i
+
+# target to preprocess a source file
+src/distributed/distributed_kvdb.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_kvdb.dir/build.make CMakeFiles/distributed_kvdb.dir/src/distributed/distributed_kvdb.cpp.i
+.PHONY : src/distributed/distributed_kvdb.cpp.i
+
+src/distributed/distributed_kvdb.s: src/distributed/distributed_kvdb.cpp.s
+.PHONY : src/distributed/distributed_kvdb.s
+
+# target to generate assembly for a file
+src/distributed/distributed_kvdb.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_kvdb.dir/build.make CMakeFiles/distributed_kvdb.dir/src/distributed/distributed_kvdb.cpp.s
+.PHONY : src/distributed/distributed_kvdb.cpp.s
+
+src/distributed/failover_manager.o: src/distributed/failover_manager.cpp.o
+.PHONY : src/distributed/failover_manager.o
+
+# target to build an object file
+src/distributed/failover_manager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_kvdb.dir/build.make CMakeFiles/distributed_kvdb.dir/src/distributed/failover_manager.cpp.o
+.PHONY : src/distributed/failover_manager.cpp.o
+
+src/distributed/failover_manager.i: src/distributed/failover_manager.cpp.i
+.PHONY : src/distributed/failover_manager.i
+
+# target to preprocess a source file
+src/distributed/failover_manager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_kvdb.dir/build.make CMakeFiles/distributed_kvdb.dir/src/distributed/failover_manager.cpp.i
+.PHONY : src/distributed/failover_manager.cpp.i
+
+src/distributed/failover_manager.s: src/distributed/failover_manager.cpp.s
+.PHONY : src/distributed/failover_manager.s
+
+# target to generate assembly for a file
+src/distributed/failover_manager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_kvdb.dir/build.make CMakeFiles/distributed_kvdb.dir/src/distributed/failover_manager.cpp.s
+.PHONY : src/distributed/failover_manager.cpp.s
+
+src/distributed/load_balancer.o: src/distributed/load_balancer.cpp.o
+.PHONY : src/distributed/load_balancer.o
+
+# target to build an object file
+src/distributed/load_balancer.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_kvdb.dir/build.make CMakeFiles/distributed_kvdb.dir/src/distributed/load_balancer.cpp.o
+.PHONY : src/distributed/load_balancer.cpp.o
+
+src/distributed/load_balancer.i: src/distributed/load_balancer.cpp.i
+.PHONY : src/distributed/load_balancer.i
+
+# target to preprocess a source file
+src/distributed/load_balancer.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_kvdb.dir/build.make CMakeFiles/distributed_kvdb.dir/src/distributed/load_balancer.cpp.i
+.PHONY : src/distributed/load_balancer.cpp.i
+
+src/distributed/load_balancer.s: src/distributed/load_balancer.cpp.s
+.PHONY : src/distributed/load_balancer.s
+
+# target to generate assembly for a file
+src/distributed/load_balancer.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_kvdb.dir/build.make CMakeFiles/distributed_kvdb.dir/src/distributed/load_balancer.cpp.s
+.PHONY : src/distributed/load_balancer.cpp.s
+
+src/distributed/shard_manager.o: src/distributed/shard_manager.cpp.o
+.PHONY : src/distributed/shard_manager.o
+
+# target to build an object file
+src/distributed/shard_manager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_kvdb.dir/build.make CMakeFiles/distributed_kvdb.dir/src/distributed/shard_manager.cpp.o
+.PHONY : src/distributed/shard_manager.cpp.o
+
+src/distributed/shard_manager.i: src/distributed/shard_manager.cpp.i
+.PHONY : src/distributed/shard_manager.i
+
+# target to preprocess a source file
+src/distributed/shard_manager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_kvdb.dir/build.make CMakeFiles/distributed_kvdb.dir/src/distributed/shard_manager.cpp.i
+.PHONY : src/distributed/shard_manager.cpp.i
+
+src/distributed/shard_manager.s: src/distributed/shard_manager.cpp.s
+.PHONY : src/distributed/shard_manager.s
+
+# target to generate assembly for a file
+src/distributed/shard_manager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_kvdb.dir/build.make CMakeFiles/distributed_kvdb.dir/src/distributed/shard_manager.cpp.s
+.PHONY : src/distributed/shard_manager.cpp.s
+
+src/index/composite_index.o: src/index/composite_index.cpp.o
+.PHONY : src/index/composite_index.o
+
+# target to build an object file
+src/index/composite_index.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/composite_index.cpp.o
+.PHONY : src/index/composite_index.cpp.o
+
+src/index/composite_index.i: src/index/composite_index.cpp.i
+.PHONY : src/index/composite_index.i
+
+# target to preprocess a source file
+src/index/composite_index.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/composite_index.cpp.i
+.PHONY : src/index/composite_index.cpp.i
+
+src/index/composite_index.s: src/index/composite_index.cpp.s
+.PHONY : src/index/composite_index.s
+
+# target to generate assembly for a file
+src/index/composite_index.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/composite_index.cpp.s
+.PHONY : src/index/composite_index.cpp.s
+
+src/index/fulltext_index.o: src/index/fulltext_index.cpp.o
+.PHONY : src/index/fulltext_index.o
+
+# target to build an object file
+src/index/fulltext_index.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/fulltext_index.cpp.o
+.PHONY : src/index/fulltext_index.cpp.o
+
+src/index/fulltext_index.i: src/index/fulltext_index.cpp.i
+.PHONY : src/index/fulltext_index.i
+
+# target to preprocess a source file
+src/index/fulltext_index.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/fulltext_index.cpp.i
+.PHONY : src/index/fulltext_index.cpp.i
+
+src/index/fulltext_index.s: src/index/fulltext_index.cpp.s
+.PHONY : src/index/fulltext_index.s
+
+# target to generate assembly for a file
+src/index/fulltext_index.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/fulltext_index.cpp.s
+.PHONY : src/index/fulltext_index.cpp.s
+
+src/index/index_manager.o: src/index/index_manager.cpp.o
+.PHONY : src/index/index_manager.o
+
+# target to build an object file
+src/index/index_manager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/index_manager.cpp.o
+.PHONY : src/index/index_manager.cpp.o
+
+src/index/index_manager.i: src/index/index_manager.cpp.i
+.PHONY : src/index/index_manager.i
+
+# target to preprocess a source file
+src/index/index_manager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/index_manager.cpp.i
+.PHONY : src/index/index_manager.cpp.i
+
+src/index/index_manager.s: src/index/index_manager.cpp.s
+.PHONY : src/index/index_manager.s
+
+# target to generate assembly for a file
+src/index/index_manager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/index_manager.cpp.s
+.PHONY : src/index/index_manager.cpp.s
+
+src/index/inverted_index.o: src/index/inverted_index.cpp.o
+.PHONY : src/index/inverted_index.o
+
+# target to build an object file
+src/index/inverted_index.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/inverted_index.cpp.o
+.PHONY : src/index/inverted_index.cpp.o
+
+src/index/inverted_index.i: src/index/inverted_index.cpp.i
+.PHONY : src/index/inverted_index.i
+
+# target to preprocess a source file
+src/index/inverted_index.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/inverted_index.cpp.i
+.PHONY : src/index/inverted_index.cpp.i
+
+src/index/inverted_index.s: src/index/inverted_index.cpp.s
+.PHONY : src/index/inverted_index.s
+
+# target to generate assembly for a file
+src/index/inverted_index.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/inverted_index.cpp.s
+.PHONY : src/index/inverted_index.cpp.s
+
+src/index/query_optimizer.o: src/index/query_optimizer.cpp.o
+.PHONY : src/index/query_optimizer.o
+
+# target to build an object file
+src/index/query_optimizer.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/query_optimizer.cpp.o
+.PHONY : src/index/query_optimizer.cpp.o
+
+src/index/query_optimizer.i: src/index/query_optimizer.cpp.i
+.PHONY : src/index/query_optimizer.i
+
+# target to preprocess a source file
+src/index/query_optimizer.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/query_optimizer.cpp.i
+.PHONY : src/index/query_optimizer.cpp.i
+
+src/index/query_optimizer.s: src/index/query_optimizer.cpp.s
+.PHONY : src/index/query_optimizer.s
+
+# target to generate assembly for a file
+src/index/query_optimizer.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/query_optimizer.cpp.s
+.PHONY : src/index/query_optimizer.cpp.s
+
+src/index/secondary_index.o: src/index/secondary_index.cpp.o
+.PHONY : src/index/secondary_index.o
+
+# target to build an object file
+src/index/secondary_index.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/secondary_index.cpp.o
+.PHONY : src/index/secondary_index.cpp.o
+
+src/index/secondary_index.i: src/index/secondary_index.cpp.i
+.PHONY : src/index/secondary_index.i
+
+# target to preprocess a source file
+src/index/secondary_index.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/secondary_index.cpp.i
+.PHONY : src/index/secondary_index.cpp.i
+
+src/index/secondary_index.s: src/index/secondary_index.cpp.s
+.PHONY : src/index/secondary_index.s
+
+# target to generate assembly for a file
+src/index/secondary_index.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/secondary_index.cpp.s
+.PHONY : src/index/secondary_index.cpp.s
+
+src/index/tokenizer.o: src/index/tokenizer.cpp.o
+.PHONY : src/index/tokenizer.o
+
+# target to build an object file
+src/index/tokenizer.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/tokenizer.cpp.o
+.PHONY : src/index/tokenizer.cpp.o
+
+src/index/tokenizer.i: src/index/tokenizer.cpp.i
+.PHONY : src/index/tokenizer.i
+
+# target to preprocess a source file
+src/index/tokenizer.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/tokenizer.cpp.i
+.PHONY : src/index/tokenizer.cpp.i
+
+src/index/tokenizer.s: src/index/tokenizer.cpp.s
+.PHONY : src/index/tokenizer.s
+
+# target to generate assembly for a file
+src/index/tokenizer.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/index/tokenizer.cpp.s
+.PHONY : src/index/tokenizer.cpp.s
 
 src/iterator/concurrent_iterator.o: src/iterator/concurrent_iterator.cpp.o
 .PHONY : src/iterator/concurrent_iterator.o
@@ -633,6 +1032,78 @@ src/sstable/sstable_writer.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/sstable/sstable_writer.cpp.s
 .PHONY : src/sstable/sstable_writer.cpp.s
 
+src/storage/binary_serializer.o: src/storage/binary_serializer.cpp.o
+.PHONY : src/storage/binary_serializer.o
+
+# target to build an object file
+src/storage/binary_serializer.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/binary_serializer.cpp.o
+.PHONY : src/storage/binary_serializer.cpp.o
+
+src/storage/binary_serializer.i: src/storage/binary_serializer.cpp.i
+.PHONY : src/storage/binary_serializer.i
+
+# target to preprocess a source file
+src/storage/binary_serializer.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/binary_serializer.cpp.i
+.PHONY : src/storage/binary_serializer.cpp.i
+
+src/storage/binary_serializer.s: src/storage/binary_serializer.cpp.s
+.PHONY : src/storage/binary_serializer.s
+
+# target to generate assembly for a file
+src/storage/binary_serializer.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/binary_serializer.cpp.s
+.PHONY : src/storage/binary_serializer.cpp.s
+
+src/storage/data_types.o: src/storage/data_types.cpp.o
+.PHONY : src/storage/data_types.o
+
+# target to build an object file
+src/storage/data_types.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/data_types.cpp.o
+.PHONY : src/storage/data_types.cpp.o
+
+src/storage/data_types.i: src/storage/data_types.cpp.i
+.PHONY : src/storage/data_types.i
+
+# target to preprocess a source file
+src/storage/data_types.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/data_types.cpp.i
+.PHONY : src/storage/data_types.cpp.i
+
+src/storage/data_types.s: src/storage/data_types.cpp.s
+.PHONY : src/storage/data_types.s
+
+# target to generate assembly for a file
+src/storage/data_types.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/data_types.cpp.s
+.PHONY : src/storage/data_types.cpp.s
+
+src/storage/json_serializer.o: src/storage/json_serializer.cpp.o
+.PHONY : src/storage/json_serializer.o
+
+# target to build an object file
+src/storage/json_serializer.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/json_serializer.cpp.o
+.PHONY : src/storage/json_serializer.cpp.o
+
+src/storage/json_serializer.i: src/storage/json_serializer.cpp.i
+.PHONY : src/storage/json_serializer.i
+
+# target to preprocess a source file
+src/storage/json_serializer.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/json_serializer.cpp.i
+.PHONY : src/storage/json_serializer.cpp.i
+
+src/storage/json_serializer.s: src/storage/json_serializer.cpp.s
+.PHONY : src/storage/json_serializer.s
+
+# target to generate assembly for a file
+src/storage/json_serializer.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/json_serializer.cpp.s
+.PHONY : src/storage/json_serializer.cpp.s
+
 src/storage/memtable.o: src/storage/memtable.cpp.o
 .PHONY : src/storage/memtable.o
 
@@ -656,6 +1127,198 @@ src/storage/memtable.s: src/storage/memtable.cpp.s
 src/storage/memtable.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/memtable.cpp.s
 .PHONY : src/storage/memtable.cpp.s
+
+src/storage/messagepack_serializer.o: src/storage/messagepack_serializer.cpp.o
+.PHONY : src/storage/messagepack_serializer.o
+
+# target to build an object file
+src/storage/messagepack_serializer.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/messagepack_serializer.cpp.o
+.PHONY : src/storage/messagepack_serializer.cpp.o
+
+src/storage/messagepack_serializer.i: src/storage/messagepack_serializer.cpp.i
+.PHONY : src/storage/messagepack_serializer.i
+
+# target to preprocess a source file
+src/storage/messagepack_serializer.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/messagepack_serializer.cpp.i
+.PHONY : src/storage/messagepack_serializer.cpp.i
+
+src/storage/messagepack_serializer.s: src/storage/messagepack_serializer.cpp.s
+.PHONY : src/storage/messagepack_serializer.s
+
+# target to generate assembly for a file
+src/storage/messagepack_serializer.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/messagepack_serializer.cpp.s
+.PHONY : src/storage/messagepack_serializer.cpp.s
+
+src/storage/protobuf_serializer.o: src/storage/protobuf_serializer.cpp.o
+.PHONY : src/storage/protobuf_serializer.o
+
+# target to build an object file
+src/storage/protobuf_serializer.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/protobuf_serializer.cpp.o
+.PHONY : src/storage/protobuf_serializer.cpp.o
+
+src/storage/protobuf_serializer.i: src/storage/protobuf_serializer.cpp.i
+.PHONY : src/storage/protobuf_serializer.i
+
+# target to preprocess a source file
+src/storage/protobuf_serializer.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/protobuf_serializer.cpp.i
+.PHONY : src/storage/protobuf_serializer.cpp.i
+
+src/storage/protobuf_serializer.s: src/storage/protobuf_serializer.cpp.s
+.PHONY : src/storage/protobuf_serializer.s
+
+# target to generate assembly for a file
+src/storage/protobuf_serializer.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/protobuf_serializer.cpp.s
+.PHONY : src/storage/protobuf_serializer.cpp.s
+
+src/storage/serialization_factory.o: src/storage/serialization_factory.cpp.o
+.PHONY : src/storage/serialization_factory.o
+
+# target to build an object file
+src/storage/serialization_factory.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/serialization_factory.cpp.o
+.PHONY : src/storage/serialization_factory.cpp.o
+
+src/storage/serialization_factory.i: src/storage/serialization_factory.cpp.i
+.PHONY : src/storage/serialization_factory.i
+
+# target to preprocess a source file
+src/storage/serialization_factory.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/serialization_factory.cpp.i
+.PHONY : src/storage/serialization_factory.cpp.i
+
+src/storage/serialization_factory.s: src/storage/serialization_factory.cpp.s
+.PHONY : src/storage/serialization_factory.s
+
+# target to generate assembly for a file
+src/storage/serialization_factory.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/serialization_factory.cpp.s
+.PHONY : src/storage/serialization_factory.cpp.s
+
+src/storage/typed_memtable.o: src/storage/typed_memtable.cpp.o
+.PHONY : src/storage/typed_memtable.o
+
+# target to build an object file
+src/storage/typed_memtable.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/typed_memtable.cpp.o
+.PHONY : src/storage/typed_memtable.cpp.o
+
+src/storage/typed_memtable.i: src/storage/typed_memtable.cpp.i
+.PHONY : src/storage/typed_memtable.i
+
+# target to preprocess a source file
+src/storage/typed_memtable.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/typed_memtable.cpp.i
+.PHONY : src/storage/typed_memtable.cpp.i
+
+src/storage/typed_memtable.s: src/storage/typed_memtable.cpp.s
+.PHONY : src/storage/typed_memtable.s
+
+# target to generate assembly for a file
+src/storage/typed_memtable.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/storage/typed_memtable.cpp.s
+.PHONY : src/storage/typed_memtable.cpp.s
+
+src/stream/change_stream.o: src/stream/change_stream.cpp.o
+.PHONY : src/stream/change_stream.o
+
+# target to build an object file
+src/stream/change_stream.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/stream/change_stream.cpp.o
+.PHONY : src/stream/change_stream.cpp.o
+
+src/stream/change_stream.i: src/stream/change_stream.cpp.i
+.PHONY : src/stream/change_stream.i
+
+# target to preprocess a source file
+src/stream/change_stream.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/stream/change_stream.cpp.i
+.PHONY : src/stream/change_stream.cpp.i
+
+src/stream/change_stream.s: src/stream/change_stream.cpp.s
+.PHONY : src/stream/change_stream.s
+
+# target to generate assembly for a file
+src/stream/change_stream.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/stream/change_stream.cpp.s
+.PHONY : src/stream/change_stream.cpp.s
+
+src/stream/event_driven.o: src/stream/event_driven.cpp.o
+.PHONY : src/stream/event_driven.o
+
+# target to build an object file
+src/stream/event_driven.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/stream/event_driven.cpp.o
+.PHONY : src/stream/event_driven.cpp.o
+
+src/stream/event_driven.i: src/stream/event_driven.cpp.i
+.PHONY : src/stream/event_driven.i
+
+# target to preprocess a source file
+src/stream/event_driven.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/stream/event_driven.cpp.i
+.PHONY : src/stream/event_driven.cpp.i
+
+src/stream/event_driven.s: src/stream/event_driven.cpp.s
+.PHONY : src/stream/event_driven.s
+
+# target to generate assembly for a file
+src/stream/event_driven.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/stream/event_driven.cpp.s
+.PHONY : src/stream/event_driven.cpp.s
+
+src/stream/realtime_sync.o: src/stream/realtime_sync.cpp.o
+.PHONY : src/stream/realtime_sync.o
+
+# target to build an object file
+src/stream/realtime_sync.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/stream/realtime_sync.cpp.o
+.PHONY : src/stream/realtime_sync.cpp.o
+
+src/stream/realtime_sync.i: src/stream/realtime_sync.cpp.i
+.PHONY : src/stream/realtime_sync.i
+
+# target to preprocess a source file
+src/stream/realtime_sync.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/stream/realtime_sync.cpp.i
+.PHONY : src/stream/realtime_sync.cpp.i
+
+src/stream/realtime_sync.s: src/stream/realtime_sync.cpp.s
+.PHONY : src/stream/realtime_sync.s
+
+# target to generate assembly for a file
+src/stream/realtime_sync.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/stream/realtime_sync.cpp.s
+.PHONY : src/stream/realtime_sync.cpp.s
+
+src/stream/stream_computing.o: src/stream/stream_computing.cpp.o
+.PHONY : src/stream/stream_computing.o
+
+# target to build an object file
+src/stream/stream_computing.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/stream/stream_computing.cpp.o
+.PHONY : src/stream/stream_computing.cpp.o
+
+src/stream/stream_computing.i: src/stream/stream_computing.cpp.i
+.PHONY : src/stream/stream_computing.i
+
+# target to preprocess a source file
+src/stream/stream_computing.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/stream/stream_computing.cpp.i
+.PHONY : src/stream/stream_computing.cpp.i
+
+src/stream/stream_computing.s: src/stream/stream_computing.cpp.s
+.PHONY : src/stream/stream_computing.s
+
+# target to generate assembly for a file
+src/stream/stream_computing.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/stream/stream_computing.cpp.s
+.PHONY : src/stream/stream_computing.cpp.s
 
 src/version/version_set.o: src/version/version_set.cpp.o
 .PHONY : src/version/version_set.o
@@ -681,6 +1344,30 @@ src/version/version_set.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvdb.dir/build.make CMakeFiles/kvdb.dir/src/version/version_set.cpp.s
 .PHONY : src/version/version_set.cpp.s
 
+test_distributed_simple.o: test_distributed_simple.cpp.o
+.PHONY : test_distributed_simple.o
+
+# target to build an object file
+test_distributed_simple.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_distributed_simple.dir/build.make CMakeFiles/test_distributed_simple.dir/test_distributed_simple.cpp.o
+.PHONY : test_distributed_simple.cpp.o
+
+test_distributed_simple.i: test_distributed_simple.cpp.i
+.PHONY : test_distributed_simple.i
+
+# target to preprocess a source file
+test_distributed_simple.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_distributed_simple.dir/build.make CMakeFiles/test_distributed_simple.dir/test_distributed_simple.cpp.i
+.PHONY : test_distributed_simple.cpp.i
+
+test_distributed_simple.s: test_distributed_simple.cpp.s
+.PHONY : test_distributed_simple.s
+
+# target to generate assembly for a file
+test_distributed_simple.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_distributed_simple.dir/build.make CMakeFiles/test_distributed_simple.dir/test_distributed_simple.cpp.s
+.PHONY : test_distributed_simple.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -689,7 +1376,13 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... distributed_demo"
+	@echo "... distributed_kvdb"
 	@echo "... kvdb"
+	@echo "... test_distributed_simple"
+	@echo "... distributed_demo.o"
+	@echo "... distributed_demo.i"
+	@echo "... distributed_demo.s"
 	@echo "... src/benchmark/ycsb_benchmark.o"
 	@echo "... src/benchmark/ycsb_benchmark.i"
 	@echo "... src/benchmark/ycsb_benchmark.s"
@@ -699,6 +1392,12 @@ help:
 	@echo "... src/cache/block_cache.o"
 	@echo "... src/cache/block_cache.i"
 	@echo "... src/cache/block_cache.s"
+	@echo "... src/cache/cache_manager.o"
+	@echo "... src/cache/cache_manager.i"
+	@echo "... src/cache/cache_manager.s"
+	@echo "... src/cache/multi_level_cache.o"
+	@echo "... src/cache/multi_level_cache.i"
+	@echo "... src/cache/multi_level_cache.s"
 	@echo "... src/cli/repl.o"
 	@echo "... src/cli/repl.i"
 	@echo "... src/cli/repl.s"
@@ -711,6 +1410,42 @@ help:
 	@echo "... src/db/kv_db.o"
 	@echo "... src/db/kv_db.i"
 	@echo "... src/db/kv_db.s"
+	@echo "... src/db/typed_kv_db.o"
+	@echo "... src/db/typed_kv_db.i"
+	@echo "... src/db/typed_kv_db.s"
+	@echo "... src/distributed/distributed_kvdb.o"
+	@echo "... src/distributed/distributed_kvdb.i"
+	@echo "... src/distributed/distributed_kvdb.s"
+	@echo "... src/distributed/failover_manager.o"
+	@echo "... src/distributed/failover_manager.i"
+	@echo "... src/distributed/failover_manager.s"
+	@echo "... src/distributed/load_balancer.o"
+	@echo "... src/distributed/load_balancer.i"
+	@echo "... src/distributed/load_balancer.s"
+	@echo "... src/distributed/shard_manager.o"
+	@echo "... src/distributed/shard_manager.i"
+	@echo "... src/distributed/shard_manager.s"
+	@echo "... src/index/composite_index.o"
+	@echo "... src/index/composite_index.i"
+	@echo "... src/index/composite_index.s"
+	@echo "... src/index/fulltext_index.o"
+	@echo "... src/index/fulltext_index.i"
+	@echo "... src/index/fulltext_index.s"
+	@echo "... src/index/index_manager.o"
+	@echo "... src/index/index_manager.i"
+	@echo "... src/index/index_manager.s"
+	@echo "... src/index/inverted_index.o"
+	@echo "... src/index/inverted_index.i"
+	@echo "... src/index/inverted_index.s"
+	@echo "... src/index/query_optimizer.o"
+	@echo "... src/index/query_optimizer.i"
+	@echo "... src/index/query_optimizer.s"
+	@echo "... src/index/secondary_index.o"
+	@echo "... src/index/secondary_index.i"
+	@echo "... src/index/secondary_index.s"
+	@echo "... src/index/tokenizer.o"
+	@echo "... src/index/tokenizer.i"
+	@echo "... src/index/tokenizer.s"
 	@echo "... src/iterator/concurrent_iterator.o"
 	@echo "... src/iterator/concurrent_iterator.i"
 	@echo "... src/iterator/concurrent_iterator.s"
@@ -753,12 +1488,48 @@ help:
 	@echo "... src/sstable/sstable_writer.o"
 	@echo "... src/sstable/sstable_writer.i"
 	@echo "... src/sstable/sstable_writer.s"
+	@echo "... src/storage/binary_serializer.o"
+	@echo "... src/storage/binary_serializer.i"
+	@echo "... src/storage/binary_serializer.s"
+	@echo "... src/storage/data_types.o"
+	@echo "... src/storage/data_types.i"
+	@echo "... src/storage/data_types.s"
+	@echo "... src/storage/json_serializer.o"
+	@echo "... src/storage/json_serializer.i"
+	@echo "... src/storage/json_serializer.s"
 	@echo "... src/storage/memtable.o"
 	@echo "... src/storage/memtable.i"
 	@echo "... src/storage/memtable.s"
+	@echo "... src/storage/messagepack_serializer.o"
+	@echo "... src/storage/messagepack_serializer.i"
+	@echo "... src/storage/messagepack_serializer.s"
+	@echo "... src/storage/protobuf_serializer.o"
+	@echo "... src/storage/protobuf_serializer.i"
+	@echo "... src/storage/protobuf_serializer.s"
+	@echo "... src/storage/serialization_factory.o"
+	@echo "... src/storage/serialization_factory.i"
+	@echo "... src/storage/serialization_factory.s"
+	@echo "... src/storage/typed_memtable.o"
+	@echo "... src/storage/typed_memtable.i"
+	@echo "... src/storage/typed_memtable.s"
+	@echo "... src/stream/change_stream.o"
+	@echo "... src/stream/change_stream.i"
+	@echo "... src/stream/change_stream.s"
+	@echo "... src/stream/event_driven.o"
+	@echo "... src/stream/event_driven.i"
+	@echo "... src/stream/event_driven.s"
+	@echo "... src/stream/realtime_sync.o"
+	@echo "... src/stream/realtime_sync.i"
+	@echo "... src/stream/realtime_sync.s"
+	@echo "... src/stream/stream_computing.o"
+	@echo "... src/stream/stream_computing.i"
+	@echo "... src/stream/stream_computing.s"
 	@echo "... src/version/version_set.o"
 	@echo "... src/version/version_set.i"
 	@echo "... src/version/version_set.s"
+	@echo "... test_distributed_simple.o"
+	@echo "... test_distributed_simple.i"
+	@echo "... test_distributed_simple.s"
 .PHONY : help
 
 

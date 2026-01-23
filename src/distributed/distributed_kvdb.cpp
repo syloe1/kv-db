@@ -12,7 +12,7 @@ DistributedKVDB::DistributedKVDB()
     shard_manager_ = std::make_unique<ShardManager>();
     load_balancer_ = std::make_unique<LoadBalancer>();
     failover_manager_ = std::make_unique<FailoverManager>(shard_manager_.get(), load_balancer_.get());
-    local_db_ = std::make_unique<KVDB>();
+    local_db_ = nullptr; // 将在 initialize 中创建
 }
 
 DistributedKVDB::~DistributedKVDB() {
@@ -29,9 +29,7 @@ bool DistributedKVDB::initialize(const std::string& node_id, const std::string& 
     port_ = port;
     
     // 初始化本地数据库
-    if (!local_db_->open("distributed_" + node_id + ".db")) {
-        return false;
-    }
+    local_db_ = std::make_unique<KVDB>("distributed_" + node_id + ".db");
     
     // 添加自己到负载均衡器
     NodeInfo self_node(node_id, host, port);
@@ -55,7 +53,7 @@ bool DistributedKVDB::shutdown() {
     failover_manager_->stop_monitoring();
     
     // 关闭本地数据库
-    local_db_->close();
+    local_db_.reset();
     
     initialized_ = false;
     std::cout << "Distributed KVDB shutdown" << std::endl;
@@ -484,7 +482,7 @@ DistributedResponse DistributedKVDB::merge_responses(const std::vector<Distribut
 
 void DistributedKVDB::update_stats(double latency_ms) {
     total_operations_++;
-    total_latency_ms_ += latency_ms;
+    total_latency_ms_.store(total_latency_ms_.load() + latency_ms);
 }
 
 bool DistributedKVDB::is_local_key(const std::string& key) const {
@@ -537,57 +535,7 @@ DistributedResponse DistributedKVDB::execute_local_request(const DistributedRequ
                 break;
             }
             case DistributedOpType::DELETE: {
-                if (local_db_->delete_key(request.key)) {
-                    response.success = true;
-                } else {
-                    response.success = false;
-                    response.error_message = "Delete operation failed";
-                }
-                break;
-            }
-            case DistributedOpType::SCAN: {
-                // 简化的扫描实现
-                response.success = true;
-                response.results.emplace_back("local_key1", "local_value1");
-                response.results.emplace_back("local_key2", "local_value2");
-                break;
-            }
-        }
-    } catch (const std::exception& e) {
-        response.success = false;
-        response.error_message = e.what();
-    }
-    
-    return response;
-}
-
-DistributedResponse DistributedKVDB::execute_local_request(const DistributedRequest& request) {
-    DistributedResponse response;
-    
-    try {
-        switch (request.op_type) {
-            case DistributedOpType::GET: {
-                std::string value;
-                if (local_db_->get(request.key, value)) {
-                    response.success = true;
-                    response.value = value;
-                } else {
-                    response.success = false;
-                    response.error_message = "Key not found";
-                }
-                break;
-            }
-            case DistributedOpType::PUT: {
-                if (local_db_->put(request.key, request.value)) {
-                    response.success = true;
-                } else {
-                    response.success = false;
-                    response.error_message = "Put operation failed";
-                }
-                break;
-            }
-            case DistributedOpType::DELETE: {
-                if (local_db_->delete_key(request.key)) {
+                if (local_db_->del(request.key)) {
                     response.success = true;
                 } else {
                     response.success = false;

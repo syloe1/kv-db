@@ -1,6 +1,7 @@
 #include "protobuf_serializer.h"
 #include <sstream>
 #include <zlib.h>
+#include <cstring>
 
 namespace kvdb {
 

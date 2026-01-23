@@ -1,4 +1,5 @@
 #include "messagepack_serializer.h"
+#ifdef HAVE_MSGPACK
 #include <zlib.h>
 
 namespace kvdb {
@@ -409,3 +410,5 @@ std::string MessagePackSerializer::decompress_data(const std::string& data) cons
 }
 
 } // namespace kvdb
+
+#endif // HAVE_MSGPACK

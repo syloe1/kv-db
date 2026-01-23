@@ -7,6 +7,7 @@
 #include <functional>
 #include <algorithm>
 #include <chrono>
+#include <stdexcept>
 
 namespace kvdb {
 

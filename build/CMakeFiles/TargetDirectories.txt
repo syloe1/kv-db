@@ -1,3 +1,6 @@
-/home/wk/Project/kv/build/CMakeFiles/kvdb.dir
-/home/wk/Project/kv/build/CMakeFiles/edit_cache.dir
-/home/wk/Project/kv/build/CMakeFiles/rebuild_cache.dir
+/home/wk/Project/kv-db/build/CMakeFiles/kvdb.dir
+/home/wk/Project/kv-db/build/CMakeFiles/distributed_kvdb.dir
+/home/wk/Project/kv-db/build/CMakeFiles/test_distributed_simple.dir
+/home/wk/Project/kv-db/build/CMakeFiles/distributed_demo.dir
+/home/wk/Project/kv-db/build/CMakeFiles/edit_cache.dir
+/home/wk/Project/kv-db/build/CMakeFiles/rebuild_cache.dir

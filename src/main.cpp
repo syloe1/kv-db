@@ -1,5 +1,4 @@
 #include <iostream>
-<<<<<<< HEAD
 #include <fstream>
 #include "db/kv_db.h"
 #include "iterator/iterator.h"

@@ -35,6 +35,9 @@ public:
     
     CacheType get_cache_type() const { return current_type_; }
     
+    // 获取底层BlockCache引用（用于兼容旧接口）
+    BlockCache& get_block_cache();
+    
 private:
     CacheType current_type_;
     

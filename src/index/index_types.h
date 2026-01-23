@@ -22,6 +22,10 @@ struct IndexMetadata {
     size_t memory_usage;
     size_t disk_usage;
     
+    // 默认构造函数
+    IndexMetadata() : type(IndexType::SECONDARY), is_unique(false), 
+                      memory_usage(0), disk_usage(0) {}
+    
     IndexMetadata(const std::string& n, IndexType t, 
                   const std::vector<std::string>& f, bool unique = false)
         : name(n), type(t), fields(f), is_unique(unique), 

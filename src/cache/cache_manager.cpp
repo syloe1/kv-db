@@ -122,3 +122,16 @@ void CacheManager::switch_to_legacy() {
     legacy_cache_ = std::make_unique<BlockCache>(l2_capacity_);
     current_type_ = CacheType::LEGACY_BLOCK_CACHE;
 }
+
+BlockCache& CacheManager::get_block_cache() {
+    if (current_type_ == CacheType::LEGACY_BLOCK_CACHE && legacy_cache_) {
+        return *legacy_cache_;
+    } else {
+        // 如果是多级缓存，我们需要创建一个临时的BlockCache或者抛出异常
+        // 为了简单起见，我们切换到legacy模式
+        if (!legacy_cache_) {
+            legacy_cache_ = std::make_unique<BlockCache>(l2_capacity_);
+        }
+        return *legacy_cache_;
+    }
+}

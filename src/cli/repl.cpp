@@ -1664,15 +1664,17 @@ void REPL::cmd_history(const std::vector<std::string>& tokens) {
     
 #ifdef HAVE_READLINE
     if (action == "SHOW") {
-        HIST_ENTRY** history_list = history_list_entries();
-        if (history_list) {
-            int count = 1;
-            for (int i = 0; history_list[i]; i++) {
-                if (syntax_highlighting_) {
-                    std::cout << DIM << std::setw(4) << count++ << ": " << RESET 
-                              << apply_syntax_highlighting(history_list[i]->line) << std::endl;
-                } else {
-                    std::cout << std::setw(4) << count++ << ": " << history_list[i]->line << std::endl;
+        int length = history_length;
+        if (length > 0) {
+            for (int i = 1; i <= length; i++) {
+                HIST_ENTRY* entry = history_get(i);
+                if (entry) {
+                    if (syntax_highlighting_) {
+                        std::cout << DIM << std::setw(4) << i << ": " << RESET 
+                                  << apply_syntax_highlighting(entry->line) << std::endl;
+                    } else {
+                        std::cout << std::setw(4) << i << ": " << entry->line << std::endl;
+                    }
                 }
             }
         } else {

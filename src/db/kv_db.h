@@ -1,5 +1,5 @@
 #pragma once
-#include "kv_db.h"
+#include "storage/memtable.h"
 #include "log/wal.h"
 #include "cache/cache_manager.h"
 #include "cache/cache_adapter.h"
@@ -69,6 +69,9 @@ public:
     bool drop_index(const std::string& name);
     std::vector<IndexMetadata> list_indexes();
 
+protected:
+    uint64_t next_seq();
+
 private:
     // 读写隔离相关
     void begin_write_operation();
@@ -100,8 +103,6 @@ private:
             return *this;
         }
     };
-
-    uint64_t next_seq();
     void request_flush();
     void flush_worker();
     void compact_worker();

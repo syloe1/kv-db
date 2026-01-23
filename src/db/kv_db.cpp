@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #include "db/kv_db.h"
 #include "sstable/sstable_writer.h"
 #include "sstable/sstable_reader.h"
@@ -322,10 +321,6 @@ size_t KVDB::get_wal_size() const {
     return 0;
 }
 
-double KVDB::get_cache_hit_rate() const {
-    return block_cache_.get_hit_rate();
-}
-
 void KVDB::print_lsm_structure() const {
     const Version& version = version_set_.current();
     for (int level = 0; level < MAX_LEVEL; level++) {
@@ -437,8 +432,8 @@ bool KVDB::get(const std::string& key, std::string& value) {
 bool KVDB::get(const std::string& key, const Snapshot& snapshot, std::string& value) {
     uint64_t snapshot_seq = snapshot.seq;
     
-    // 创建缓存适配器
-    CacheAdapter cache_adapter(*cache_manager_);
+    // 创建缓存引用
+    BlockCache& cache = cache_manager_->get_block_cache();
     
     // 1. 先检查MemTable
     if (memtable_.get(key, snapshot_seq, value)) {
@@ -450,7 +445,7 @@ bool KVDB::get(const std::string& key, const Snapshot& snapshot, std::string& va
         std::lock_guard<std::mutex> lock(levels_[0].mutex);
         for (auto it = levels_[0].sstables.rbegin(); it != levels_[0].sstables.rend(); it++) {
             if (it->contains_key(key)) {
-                auto result = SSTableReader::get(it->filename, key, snapshot_seq, cache_adapter);
+                auto result = SSTableReader::get(it->filename, key, snapshot_seq, cache);
                 if (result.has_value()) {
                     value = result.value();
                     return true;
@@ -465,7 +460,7 @@ bool KVDB::get(const std::string& key, const Snapshot& snapshot, std::string& va
         
         for (const auto& sstable : levels_[level].sstables) {
             if (sstable.contains_key(key)) {
-                auto result = SSTableReader::get(sstable.filename, key, snapshot_seq, cache_adapter);
+                auto result = SSTableReader::get(sstable.filename, key, snapshot_seq, cache);
                 if (result.has_value()) {
                     value = result.value();
                     return true;
@@ -750,46 +745,7 @@ void KVDB::execute_compaction_task(std::unique_ptr<CompactionTask> task) {
               << "写放大: " << (bytes_read > 0 ? static_cast<double>(bytes_written) / bytes_read : 0.0)
               << std::endl;
 }
-=======
-#include "kv_db.h"
-#include <iostream>
 
-KVDB::KVDB(const std::string& wal_file)
-    : wal_(wal_file) {
-
-        std::cout << "📂 正在从 WAL 文件重放数据: " << wal_file << std::endl;
-        
-        int put_count = 0, del_count = 0;
-        wal_.replay(
-            [this, &put_count](const std::string& key, const std::string& value) {
-                memtable_.put(key, value);
-                put_count++;
-            },
-            [this, &del_count](const std::string& key) {
-                memtable_.del(key);
-                del_count++;
-            }
-        );
-        
-        std::cout << "✅ WAL 重放完成: PUT " << put_count << " 次, DEL " << del_count << " 次" << std::endl;
-    }
-
-bool KVDB::put(const std::string& key, const std::string& value) {
-    wal_.log_put(key, value);
-    memtable_.put(key, value);
-    return true;
-}
-
-bool KVDB::get(const std::string& key, std::string& value) {
-    return memtable_.get(key, value);
-}
-
-bool KVDB::del(const std::string& key) {
-    wal_.log_del(key);
-    memtable_.del(key);
-    return true;
-}
->>>>>>> cc24aa4eae4edea13c40a5b76ae3281181c6a76a
 // 缓存管理方法实现
 void KVDB::enable_multi_level_cache() {
     cache_manager_->switch_to_multi_level();
