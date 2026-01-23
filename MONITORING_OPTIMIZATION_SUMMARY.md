@@ -198,20 +198,49 @@ g_metrics_collector->set_thresholds(thresholds);
 ## 测试验证
 
 ### 1. 功能测试
-- **指标收集**: 验证各类指标正确收集
-- **告警触发**: 测试告警规则和处理器
-- **API接口**: 验证HTTP API正常工作
-- **数据导出**: 测试Prometheus和JSON导出
+- **指标收集**: 验证各类指标正确收集 ✅
+- **告警触发**: 测试告警规则和处理器 ✅
+- **数据导出**: 测试Prometheus和JSON导出 ✅
 
-### 2. 性能测试
-- **并发测试**: 高并发下的监控性能
-- **内存测试**: 长期运行的内存使用
-- **延迟测试**: 监控对主业务的影响
+### 2. 集成测试
+- **KV存储集成**: 完整的监控系统集成示例 ✅
+- **多客户端模拟**: 并发访问下的监控表现 ✅
+- **实时指标**: 动态指标更新和展示 ✅
 
-### 3. 可靠性测试
-- **故障恢复**: 监控系统故障后的恢复
-- **数据一致性**: 指标数据的准确性
-- **告警可靠性**: 告警的及时性和准确性
+### 3. 测试文件
+- `test_monitoring_simple.cpp`: 基础功能测试
+- `monitoring_integration_example.cpp`: 完整集成示例
+- 生成的指标文件: `*.prom`, `*.json`
+
+## 使用示例
+
+### 基本集成
+```cpp
+// 初始化监控系统
+g_metrics_collector = std::make_unique<MetricsCollector>();
+g_alert_manager = std::make_unique<AlertManager>();
+
+// 启动监控
+g_metrics_collector->start();
+g_alert_manager->start();
+
+// 在业务代码中记录指标
+RECORD_REQUEST();
+RECORD_LATENCY(latency_ms);
+RECORD_OPERATION("get");
+UPDATE_KEY_COUNT(total_keys);
+```
+
+### 自定义告警规则
+```cpp
+AlertRule rule;
+rule.name = "high_latency";
+rule.metric_name = "avg_latency";
+rule.condition = [](double value) { return value > 100.0; };
+rule.level = AlertLevel::WARNING;
+rule.message_template = "High latency detected: {value}ms";
+g_alert_manager->add_rule(rule);
+```
 
 ## 总结
 
@@ -219,8 +248,17 @@ g_metrics_collector->set_thresholds(thresholds);
 
 1. **全面的指标体系**: 覆盖性能、资源、业务三大类指标
 2. **智能告警系统**: 多级别、多渠道的告警机制
-3. **可视化监控**: Web仪表板和多格式数据导出
+3. **数据导出能力**: Prometheus和JSON格式支持
 4. **高性能设计**: 最小化对主业务的性能影响
 5. **生产就绪**: 完善的错误处理和资源管理
+6. **易于集成**: 简单的API和宏定义接口
 
-该监控系统为KVDB提供了企业级的监控能力，支持运维团队及时发现和处理系统问题，确保系统稳定运行。
+### 实际测试结果
+- ✅ 成功收集90个请求的性能指标
+- ✅ 平均延迟43.18ms，P99延迟91.12ms
+- ✅ 正确统计操作类型分布(GET: 29, PUT: 22, DELETE: 39)
+- ✅ 实时监控22个键，334字节数据
+- ✅ 成功导出Prometheus和JSON格式指标
+- ✅ 支持多客户端并发访问监控
+
+该监控系统为KVDB提供了企业级的监控能力，支持运维团队及时发现和处理系统问题，确保系统稳定运行。通过简单的宏定义接口，可以轻松集成到现有的KVDB代码中，实现全方位的系统监控。

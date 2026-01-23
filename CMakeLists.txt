@@ -51,6 +51,11 @@ set(KVDB_SOURCES
     src/storage/json_serializer.cpp
     src/storage/messagepack_serializer.cpp
     src/storage/protobuf_serializer.cpp
+    # 流式处理系统
+    src/stream/change_stream.cpp
+    src/stream/realtime_sync.cpp
+    src/stream/event_driven.cpp
+    src/stream/stream_computing.cpp
 )
 
 # 网络功能源文件

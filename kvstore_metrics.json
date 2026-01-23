@@ -1,0 +1,18 @@
+{
+  "performance": {
+    "qps": 0,
+    "avg_latency": 43.1808,
+    "p99_latency": 91.1158,
+    "total_requests": 90
+  },
+  "resources": {
+    "cpu_usage": 0.264317,
+    "memory_usage": 7842975744,
+    "disk_usage": 24467988480
+  },
+  "business": {
+    "total_keys": 22,
+    "total_data_size": 334,
+    "active_connections": 3
+  }
+}
