@@ -320,7 +320,7 @@ make
 
 ## 📄 许可证
 
-本项目基于 MIT 许可证开源 - 查看 [LICENSE](LICENSE) 文件了解详情。
+本项目基于 MIT 许可证开源。
 
 ## 🙏 致谢
 
@@ -332,9 +332,9 @@ KVDB 的实现参考了以下优秀项目和研究：
 
 ## 📞 联系方式
 
-- **项目主页**: https://github.com/yourusername/kvdb
-- **问题反馈**: https://github.com/yourusername/kvdb/issues
-- **邮件联系**: your-email@example.com
+- **项目主页**: https://github.com/syloe1/kv-db
+- **问题反馈**: https://github.com/syloe1/kv-db/issues
+- **邮件联系**: syloe112@gmail.com
 
 ---
 
