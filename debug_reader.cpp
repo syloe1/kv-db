@@ -73,13 +73,13 @@ int main() {
         pos -= line.length() + 1;
     }
     
-    bool is_enhanced = lines.size() >= 2 && lines[0] == "ENHANCED_SSTABLE_V1";
+    bool is_enhanced = lines.size() >= 2 && lines[1] == "ENHANCED_SSTABLE_V1";
     std::cout << "Is enhanced format: " << (is_enhanced ? "YES" : "NO") << std::endl;
     std::cout << "Lines size: " << lines.size() << std::endl;
     if (lines.size() >= 2) {
-        std::cout << "Comparing '" << lines[0] << "' with 'ENHANCED_SSTABLE_V1'" << std::endl;
-        std::cout << "Length: " << lines[0].length() << " vs " << std::string("ENHANCED_SSTABLE_V1").length() << std::endl;
-        std::cout << "Equal: " << (lines[0] == "ENHANCED_SSTABLE_V1") << std::endl;
+        std::cout << "Comparing '" << lines[1] << "' with 'ENHANCED_SSTABLE_V1'" << std::endl;
+        std::cout << "Length: " << lines[1].length() << " vs " << std::string("ENHANCED_SSTABLE_V1").length() << std::endl;
+        std::cout << "Equal: " << (lines[1] == "ENHANCED_SSTABLE_V1") << std::endl;
     }
     
     in.close();

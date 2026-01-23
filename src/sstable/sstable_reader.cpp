@@ -110,44 +110,42 @@ bool SSTableReader::is_enhanced_format(const std::string& filename) {
     in.seekg(0, std::ios::end);
     std::streampos file_size = in.tellg();
     
-    // Read second-to-last line
-    std::string line;
+    // Read last few lines
+    std::vector<std::string> lines;
     long pos = (long)file_size - 1;
     
-    // Skip last line
-    in.seekg(pos);
-    char c;
-    while (pos > 0 && in.get(c) && c == '\n') {
-        pos--;
+    for (int line_count = 0; line_count < 2 && pos > 0; ++line_count) {
+        // Skip trailing newlines
         in.seekg(pos);
-    }
-    while (pos > 0) {
-        in.seekg(pos);
-        in.get(c);
-        if (c == '\n') {
-            pos++;
-            break;
+        char c;
+        while (pos > 0 && in.get(c) && c == '\n') {
+            pos--;
+            in.seekg(pos);
         }
-        pos--;
-    }
-    
-    // Skip second-to-last line
-    pos--;
-    while (pos > 0) {
-        in.seekg(pos);
-        in.get(c);
-        if (c == '\n') {
-            pos++;
-            break;
+        
+        // Find start of line
+        while (pos > 0) {
+            in.seekg(pos);
+            in.get(c);
+            if (c == '\n') {
+                pos++;
+                break;
+            }
+            pos--;
         }
-        pos--;
+        
+        // Read the line
+        in.clear();
+        in.seekg(pos);
+        std::string line;
+        std::getline(in, line);
+        lines.insert(lines.begin(), line);
+        
+        pos -= line.length() + 1;
     }
     
-    in.clear();
-    in.seekg(pos);
-    std::getline(in, line);
-    
-    return line == "ENHANCED_SSTABLE_V1";
+    // Check if second-to-last line is the enhanced marker
+    return lines.size() >= 2 && lines[1] == "ENHANCED_SSTABLE_V1";
 }
 
 std::optional<std::string>

@@ -21,6 +21,10 @@ KVDB::KVDB(const std::string& wal_file)
     // 创建数据目录
     std::filesystem::create_directories("data");
     
+    // 初始化多级缓存管理器
+    cache_manager_ = std::make_unique<CacheManager>(
+        CacheManager::CacheType::MULTI_LEVEL_CACHE, 1024, 8192);
+    
     // 初始化多级结构
     levels_.resize(MAX_LEVEL);
     
@@ -407,6 +411,9 @@ bool KVDB::get(const std::string& key, std::string& value) {
 bool KVDB::get(const std::string& key, const Snapshot& snapshot, std::string& value) {
     uint64_t snapshot_seq = snapshot.seq;
     
+    // 创建缓存适配器
+    CacheAdapter cache_adapter(*cache_manager_);
+    
     // 1. 先检查MemTable
     if (memtable_.get(key, snapshot_seq, value)) {
         return true;
@@ -417,7 +424,7 @@ bool KVDB::get(const std::string& key, const Snapshot& snapshot, std::string& va
         std::lock_guard<std::mutex> lock(levels_[0].mutex);
         for (auto it = levels_[0].sstables.rbegin(); it != levels_[0].sstables.rend(); it++) {
             if (it->contains_key(key)) {
-                auto result = SSTableReader::get(it->filename, key, snapshot_seq, block_cache_);
+                auto result = SSTableReader::get(it->filename, key, snapshot_seq, cache_adapter);
                 if (result.has_value()) {
                     value = result.value();
                     return true;
@@ -432,7 +439,7 @@ bool KVDB::get(const std::string& key, const Snapshot& snapshot, std::string& va
         
         for (const auto& sstable : levels_[level].sstables) {
             if (sstable.contains_key(key)) {
-                auto result = SSTableReader::get(sstable.filename, key, snapshot_seq, block_cache_);
+                auto result = SSTableReader::get(sstable.filename, key, snapshot_seq, cache_adapter);
                 if (result.has_value()) {
                     value = result.value();
                     return true;
@@ -757,3 +764,26 @@ bool KVDB::del(const std::string& key) {
     return true;
 }
 >>>>>>> cc24aa4eae4edea13c40a5b76ae3281181c6a76a
+// 缓存管理方法实现
+void KVDB::enable_multi_level_cache() {
+    cache_manager_->switch_to_multi_level();
+    std::cout << "[KVDB] 已切换到多级缓存模式\n";
+}
+
+void KVDB::enable_legacy_cache() {
+    cache_manager_->switch_to_legacy();
+    std::cout << "[KVDB] 已切换到传统缓存模式\n";
+}
+
+void KVDB::warm_cache_with_hot_data(const std::vector<std::pair<std::string, std::string>>& hot_data) {
+    cache_manager_->warm_cache(hot_data);
+    std::cout << "[KVDB] 缓存预热完成，加载了 " << hot_data.size() << " 个热点数据\n";
+}
+
+void KVDB::print_cache_stats() const {
+    cache_manager_->print_stats();
+}
+
+double KVDB::get_cache_hit_rate() const {
+    return cache_manager_->get_hit_rate();
+}

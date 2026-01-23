@@ -1,8 +1,8 @@
 #pragma once
 #include "storage/memtable.h"
 #include "log/wal.h"
-<<<<<<< HEAD
-#include "cache/block_cache.h"
+#include "cache/cache_manager.h"
+#include "cache/cache_adapter.h"
 #include "sstable/sstable_meta.h"
 #include "version/version_set.h"
 #include "snapshot/snapshot.h"
@@ -16,13 +16,10 @@
 #include <atomic>
 #include <mutex>
 #include <memory>
-=======
->>>>>>> cc24aa4eae4edea13c40a5b76ae3281181c6a76a
 
 class KVDB {
 public:
     explicit KVDB(const std::string& wal_file);
-<<<<<<< HEAD
     ~KVDB();
     
     bool put(const std::string& key, const std::string& value);
@@ -46,6 +43,12 @@ public:
     void set_compaction_strategy(CompactionStrategyType type);
     CompactionStrategyType get_compaction_strategy() const;
     const CompactionStats& get_compaction_stats() const;
+    
+    // 缓存管理
+    void enable_multi_level_cache();
+    void enable_legacy_cache();
+    void warm_cache_with_hot_data(const std::vector<std::pair<std::string, std::string>>& hot_data);
+    void print_cache_stats() const;
     
     // REPL 支持方法
     size_t get_memtable_size() const;
@@ -98,7 +101,7 @@ private:
 
     MemTable memtable_;
     WAL wal_;
-    BlockCache block_cache_{1024};
+    std::unique_ptr<CacheManager> cache_manager_;
     int file_id_ = 0;
     std::vector<Level> levels_;
     VersionSet version_set_{MAX_LEVEL};
@@ -116,14 +119,3 @@ private:
     std::atomic<bool> compaction_requested_{false};
     std::atomic<bool> stop_{false};
 };
-=======
-
-    bool put(const std::string& key, const std::string& value);
-    bool get(const std::string& key, std::string& value);
-    bool del(const std::string& key);
-
-private:
-    MemTable memtable_;
-    WAL wal_;
-};
->>>>>>> cc24aa4eae4edea13c40a5b76ae3281181c6a76a
