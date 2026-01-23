@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 
 // readline 头文件
 #ifdef HAVE_READLINE
@@ -21,11 +22,28 @@ std::vector<std::string> REPL::commands_ = {
     "PUT", "GET", "DEL", "FLUSH", "COMPACT", 
     "SNAPSHOT", "GET_AT", "RELEASE", "SCAN", "PREFIX_SCAN",
     "CONCURRENT_TEST", "BENCHMARK", "SET_COMPACTION", 
-    "START_NETWORK", "STOP_NETWORK", "STATS", "LSM", "HELP", "MAN", "EXIT", "QUIT"
+    "START_NETWORK", "STOP_NETWORK", "STATS", "LSM", "HELP", "MAN", 
+    "SOURCE", "MULTILINE", "HIGHLIGHT", "HISTORY", "CLEAR", "ECHO",
+    "EXIT", "QUIT"
 };
 
-REPL::REPL(KVDB& db) : db_(db) {
+std::vector<std::string> REPL::current_parameters_;
+
+// 颜色常量定义
+const std::string REPL::RESET = "\033[0m";
+const std::string REPL::RED = "\033[31m";
+const std::string REPL::GREEN = "\033[32m";
+const std::string REPL::YELLOW = "\033[33m";
+const std::string REPL::BLUE = "\033[34m";
+const std::string REPL::MAGENTA = "\033[35m";
+const std::string REPL::CYAN = "\033[36m";
+const std::string REPL::WHITE = "\033[37m";
+const std::string REPL::BOLD = "\033[1m";
+const std::string REPL::DIM = "\033[2m";
+
+REPL::REPL(KVDB& db) : db_(db), multi_line_mode_(false), script_mode_(false), syntax_highlighting_(true) {
     setup_readline();
+    setup_colors();
 #ifdef ENABLE_NETWORK
     network_server_ = std::make_unique<NetworkServer>(db_);
 #endif
@@ -50,6 +68,93 @@ std::vector<std::string> REPL::split(const std::string& line) {
     return tokens;
 }
 
+void REPL::setup_colors() {
+    color_map_["PUT"] = GREEN + BOLD;
+    color_map_["GET"] = BLUE + BOLD;
+    color_map_["DEL"] = RED + BOLD;
+    color_map_["FLUSH"] = YELLOW + BOLD;
+    color_map_["COMPACT"] = YELLOW + BOLD;
+    color_map_["SNAPSHOT"] = MAGENTA + BOLD;
+    color_map_["GET_AT"] = BLUE;
+    color_map_["RELEASE"] = MAGENTA;
+    color_map_["SCAN"] = CYAN + BOLD;
+    color_map_["PREFIX_SCAN"] = CYAN + BOLD;
+    color_map_["CONCURRENT_TEST"] = YELLOW;
+    color_map_["BENCHMARK"] = RED;
+    color_map_["SET_COMPACTION"] = YELLOW;
+    color_map_["START_NETWORK"] = GREEN;
+    color_map_["STOP_NETWORK"] = RED;
+    color_map_["STATS"] = WHITE + BOLD;
+    color_map_["LSM"] = WHITE + BOLD;
+    color_map_["HELP"] = CYAN;
+    color_map_["MAN"] = CYAN;
+    color_map_["SOURCE"] = MAGENTA;
+    color_map_["MULTILINE"] = YELLOW;
+    color_map_["HIGHLIGHT"] = YELLOW;
+    color_map_["HISTORY"] = WHITE;
+    color_map_["CLEAR"] = WHITE;
+    color_map_["ECHO"] = GREEN;
+    color_map_["EXIT"] = RED + BOLD;
+    color_map_["QUIT"] = RED + BOLD;
+}
+
+std::string REPL::apply_syntax_highlighting(const std::string& line) {
+    if (!syntax_highlighting_) {
+        return line;
+    }
+    
+    auto tokens = split(line);
+    if (tokens.empty()) {
+        return line;
+    }
+    
+    std::string result;
+    std::string command = tokens[0];
+    
+    // 转换为大写进行匹配
+    std::string upper_command = command;
+    for (char& c : upper_command) {
+        c = std::toupper(c);
+    }
+    
+    // 高亮命令
+    result += colorize_command(upper_command);
+    
+    // 高亮参数
+    for (size_t i = 1; i < tokens.size(); i++) {
+        result += " " + colorize_parameter(tokens[i], upper_command);
+    }
+    
+    result += RESET;
+    return result;
+}
+
+std::string REPL::colorize_command(const std::string& command) {
+    auto it = color_map_.find(command);
+    if (it != color_map_.end()) {
+        return it->second + command + RESET;
+    }
+    return RED + command + RESET;  // 未知命令用红色
+}
+
+std::string REPL::colorize_parameter(const std::string& param, const std::string& command) {
+    // 根据命令类型对参数进行不同的着色
+    if (command == "PUT" || command == "GET" || command == "DEL") {
+        return CYAN + param + RESET;  // 键值参数用青色
+    } else if (command == "SCAN" || command == "PREFIX_SCAN") {
+        return YELLOW + param + RESET;  // 扫描参数用黄色
+    } else if (command == "BENCHMARK") {
+        return MAGENTA + param + RESET;  // 基准测试参数用紫色
+    } else if (param == "HELP" || param == "-" || param == "help") {
+        return GREEN + param + RESET;  // 帮助参数用绿色
+    }
+    return WHITE + param + RESET;  // 默认参数用白色
+}
+
+void REPL::print_colored_line(const std::string& line) {
+    std::cout << apply_syntax_highlighting(line) << std::endl;
+}
+
 void REPL::setup_readline() {
 #ifdef HAVE_READLINE
     // 设置补全函数
@@ -65,6 +170,169 @@ void REPL::setup_readline() {
     // 保存历史文件的钩子
     rl_bind_key('\t', rl_complete);  // Tab 键补全
 #endif
+}
+
+bool REPL::is_multi_line_command(const std::string& line) {
+    // 检查是否是多行命令的开始
+    std::string trimmed = trim_line(line);
+    return trimmed.back() == '\\' || trimmed == "MULTILINE";
+}
+
+bool REPL::is_multi_line_complete(const std::string& buffer) {
+    // 检查多行输入是否完成
+    std::string trimmed = trim_line(buffer);
+    return !trimmed.empty() && trimmed.back() != '\\';
+}
+
+void REPL::enter_multi_line_mode(const std::string& initial_line) {
+    multi_line_mode_ = true;
+    multi_line_buffer_ = initial_line;
+    multi_line_prompt_ = "... ";
+    
+    if (syntax_highlighting_) {
+        std::cout << YELLOW << "Entering multi-line mode. End with a line not ending in '\\' or type 'END'" << RESET << std::endl;
+    } else {
+        std::cout << "Entering multi-line mode. End with a line not ending in '\\' or type 'END'" << std::endl;
+    }
+}
+
+void REPL::exit_multi_line_mode() {
+    multi_line_mode_ = false;
+    multi_line_buffer_.clear();
+    multi_line_prompt_.clear();
+}
+
+std::string REPL::process_multi_line_input() {
+    std::string result = multi_line_buffer_;
+    
+    // 移除行尾的反斜杠并连接行
+    std::string processed;
+    std::istringstream iss(result);
+    std::string line;
+    
+    while (std::getline(iss, line)) {
+        std::string trimmed = trim_line(line);
+        if (!trimmed.empty() && trimmed.back() == '\\') {
+            trimmed.pop_back();  // 移除反斜杠
+            processed += trimmed + " ";
+        } else {
+            processed += trimmed;
+        }
+    }
+    
+    return processed;
+}
+
+bool REPL::execute_script(const std::string& filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cout << "Error: Cannot open script file '" << filename << "'" << std::endl;
+        return false;
+    }
+    
+    script_mode_ = true;
+    std::string line;
+    int line_number = 0;
+    
+    std::cout << "Executing script: " << filename << std::endl;
+    
+    while (std::getline(file, line)) {
+        line_number++;
+        
+        if (is_comment_line(line)) {
+            continue;  // 跳过注释行
+        }
+        
+        std::string trimmed = trim_line(line);
+        if (trimmed.empty()) {
+            continue;  // 跳过空行
+        }
+        
+        try {
+            if (syntax_highlighting_) {
+                std::cout << DIM << "[" << line_number << "] " << RESET;
+                print_colored_line(trimmed);
+            } else {
+                std::cout << "[" << line_number << "] " << trimmed << std::endl;
+            }
+            
+            execute_script_line(trimmed);
+            
+        } catch (const std::exception& e) {
+            std::cout << RED << "Error at line " << line_number << ": " << e.what() << RESET << std::endl;
+            script_mode_ = false;
+            return false;
+        }
+    }
+    
+    script_mode_ = false;
+    std::cout << "Script execution completed." << std::endl;
+    return true;
+}
+
+void REPL::execute_script_line(const std::string& line) {
+    auto tokens = split(line);
+    if (tokens.empty()) return;
+    
+    // 转换为大写
+    std::string cmd = tokens[0];
+    for (char& c : cmd) {
+        c = std::toupper(c);
+    }
+    tokens[0] = cmd;
+    
+    execute_command(tokens);
+}
+
+bool REPL::is_comment_line(const std::string& line) {
+    std::string trimmed = trim_line(line);
+    return trimmed.empty() || trimmed[0] == '#' || trimmed.substr(0, 2) == "//";
+}
+
+std::string REPL::trim_line(const std::string& line) {
+    size_t start = line.find_first_not_of(" \t\r\n");
+    if (start == std::string::npos) return "";
+    
+    size_t end = line.find_last_not_of(" \t\r\n");
+    return line.substr(start, end - start + 1);
+}
+
+std::string REPL::read_line_with_highlighting(const char* prompt) {
+    char* line_cstr = read_input(prompt);
+    if (!line_cstr) {
+        return "";
+    }
+    
+    std::string line(line_cstr);
+    free(line_cstr);
+    
+    return line;
+}
+
+void REPL::update_parameter_completion(const std::vector<std::string>& tokens) {
+    current_parameters_.clear();
+    
+    if (tokens.empty()) return;
+    
+    std::string command = tokens[0];
+    for (char& c : command) {
+        c = std::toupper(c);
+    }
+    
+    // 根据命令提供参数补全
+    if (command == "SET_COMPACTION") {
+        current_parameters_ = {"LEVELED", "TIERED", "SIZE_TIERED", "TIME_WINDOW"};
+    } else if (command == "START_NETWORK" || command == "STOP_NETWORK") {
+        current_parameters_ = {"grpc", "websocket", "all"};
+    } else if (command == "BENCHMARK") {
+        current_parameters_ = {"A", "B", "C", "D", "E", "F"};
+    } else if (command == "MULTILINE") {
+        current_parameters_ = {"ON", "OFF", "STATUS"};
+    } else if (command == "HIGHLIGHT") {
+        current_parameters_ = {"ON", "OFF", "STATUS"};
+    } else if (command == "HISTORY") {
+        current_parameters_ = {"SHOW", "CLEAR", "SAVE", "LOAD"};
+    }
 }
 
 char* REPL::read_input(const char* prompt) {
@@ -87,11 +355,25 @@ char* REPL::read_input(const char* prompt) {
 }
 
 void REPL::run() {
-    std::cout << "KVDB v1.0.0 - Type 'HELP' for commands\n";
-    std::cout << "Tips: Use ↑/↓ for history, TAB for completion\n";
+    if (syntax_highlighting_) {
+        std::cout << BOLD << CYAN << "KVDB v1.0.0" << RESET << " - Enhanced Command Line Interface\n";
+        std::cout << GREEN << "Features:" << RESET << " ↑/↓ history, TAB completion, syntax highlighting, multi-line input, script support\n";
+        std::cout << "Type " << YELLOW << BOLD << "HELP" << RESET << " for commands, " 
+                  << YELLOW << BOLD << "MAN <command>" << RESET << " for detailed help\n\n";
+    } else {
+        std::cout << "KVDB v1.0.0 - Enhanced Command Line Interface\n";
+        std::cout << "Features: ↑/↓ history, TAB completion, multi-line input, script support\n";
+        std::cout << "Type 'HELP' for commands, 'MAN <command>' for detailed help\n\n";
+    }
     
     while (true) {
-        char* line_cstr = read_input("kvdb> ");
+        std::string prompt = multi_line_mode_ ? multi_line_prompt_ : "kvdb> ";
+        
+        if (syntax_highlighting_ && !multi_line_mode_) {
+            prompt = BOLD + BLUE + "kvdb" + RESET + "> ";
+        }
+        
+        char* line_cstr = read_input(prompt.c_str());
         if (!line_cstr) {
             std::cout << "\nBye!\n";
             break;
@@ -101,6 +383,69 @@ void REPL::run() {
         free(line_cstr);
         
         if (line.empty()) continue;
+        
+        // 处理多行输入
+        if (multi_line_mode_) {
+            if (trim_line(line) == "END") {
+                // 结束多行输入
+                std::string complete_command = process_multi_line_input();
+                exit_multi_line_mode();
+                
+                if (!complete_command.empty()) {
+                    auto tokens = split(complete_command);
+                    if (!tokens.empty()) {
+                        // 转换为大写
+                        std::string cmd = tokens[0];
+                        for (char& c : cmd) {
+                            c = std::toupper(c);
+                        }
+                        tokens[0] = cmd;
+                        
+                        if (cmd == "EXIT" || cmd == "QUIT") {
+                            std::cout << "Bye!\n";
+                            break;
+                        }
+                        
+                        execute_command(tokens);
+                    }
+                }
+                continue;
+            } else {
+                // 继续多行输入
+                multi_line_buffer_ += "\n" + line;
+                if (is_multi_line_complete(line)) {
+                    // 多行输入完成
+                    std::string complete_command = process_multi_line_input();
+                    exit_multi_line_mode();
+                    
+                    if (!complete_command.empty()) {
+                        auto tokens = split(complete_command);
+                        if (!tokens.empty()) {
+                            // 转换为大写
+                            std::string cmd = tokens[0];
+                            for (char& c : cmd) {
+                                c = std::toupper(c);
+                            }
+                            tokens[0] = cmd;
+                            
+                            if (cmd == "EXIT" || cmd == "QUIT") {
+                                std::cout << "Bye!\n";
+                                break;
+                            }
+                            
+                            execute_command(tokens);
+                        }
+                    }
+                }
+                continue;
+            }
+        }
+        
+        // 检查是否开始多行输入
+        if (is_multi_line_command(line)) {
+            enter_multi_line_mode(line);
+            continue;
+        }
         
         auto tokens = split(line);
         if (tokens.empty()) continue;
@@ -129,8 +474,10 @@ char** REPL::command_completion(const char* text, int start, int end) {
     // 只在命令位置补全
     if (start == 0) {
         return rl_completion_matches(text, command_generator);
+    } else {
+        // 参数位置补全
+        return rl_completion_matches(text, parameter_generator);
     }
-    return nullptr;
 }
 
 char* REPL::command_generator(const char* text, int state) {
@@ -153,10 +500,34 @@ char* REPL::command_generator(const char* text, int state) {
     
     return nullptr;
 }
+
+char* REPL::parameter_generator(const char* text, int state) {
+    static int index = 0;
+    static size_t len = 0;
+    
+    if (!state) {
+        index = 0;
+        len = strlen(text);
+    }
+    
+    while (index < (int)current_parameters_.size()) {
+        const std::string& param = current_parameters_[index++];
+        if (param.length() >= len && param.substr(0, len) == text) {
+            char* match = (char*)malloc(param.length() + 1);
+            strcpy(match, param.c_str());
+            return match;
+        }
+    }
+    
+    return nullptr;
+}
 #endif
 
 void REPL::execute_command(const std::vector<std::string>& tokens) {
     std::string cmd = tokens[0];
+    
+    // 更新参数补全
+    update_parameter_completion(tokens);
     
     // 检查是否是帮助请求
     if (is_help_request(tokens)) {
@@ -203,11 +574,32 @@ void REPL::execute_command(const std::vector<std::string>& tokens) {
             cmd_help();
         } else if (cmd == "MAN") {
             cmd_man(tokens);
+        } else if (cmd == "SOURCE") {
+            cmd_source(tokens);
+        } else if (cmd == "MULTILINE") {
+            cmd_multiline(tokens);
+        } else if (cmd == "HIGHLIGHT") {
+            cmd_highlight(tokens);
+        } else if (cmd == "HISTORY") {
+            cmd_history(tokens);
+        } else if (cmd == "CLEAR") {
+            cmd_clear();
+        } else if (cmd == "ECHO") {
+            cmd_echo(tokens);
         } else {
-            std::cout << "Unknown command: " << cmd << ". Type 'HELP' for help.\n";
+            if (syntax_highlighting_) {
+                std::cout << RED << "Unknown command: " << cmd << RESET << ". Type " 
+                          << YELLOW << BOLD << "HELP" << RESET << " for help.\n";
+            } else {
+                std::cout << "Unknown command: " << cmd << ". Type 'HELP' for help.\n";
+            }
         }
     } catch (const std::exception& e) {
-        std::cout << "Error: " << e.what() << "\n";
+        if (syntax_highlighting_) {
+            std::cout << RED << "Error: " << e.what() << RESET << "\n";
+        } else {
+            std::cout << "Error: " << e.what() << "\n";
+        }
     }
 }
 
@@ -618,33 +1010,81 @@ void REPL::cmd_lsm() {
 }
 
 void REPL::cmd_help() {
-    std::cout << "Available commands:\n";
-    std::cout << "  PUT <key> <value>          - Insert or update a key-value pair\n";
-    std::cout << "  GET <key>                  - Get value for a key\n";
-    std::cout << "  DEL <key>                  - Delete a key\n";
-    std::cout << "  FLUSH                      - Flush MemTable to disk\n";
-    std::cout << "  COMPACT                    - Trigger manual compaction\n";
-    std::cout << "  SNAPSHOT                   - Create a snapshot\n";
-    std::cout << "  GET_AT <key> <snapshot_id> - Get value at a specific snapshot\n";
-    std::cout << "  RELEASE <snapshot_id>      - Release a snapshot\n";
-    std::cout << "  SCAN <begin> <end>         - Range scan from begin to end\n";
-    std::cout << "  PREFIX_SCAN <prefix>       - Scan all keys with given prefix (optimized)\n";
-    std::cout << "  CONCURRENT_TEST            - Test concurrent iterator functionality\n";
-    std::cout << "  BENCHMARK <workload> [args] - Run YCSB benchmark (A/B/C/D/E/F)\n";
-    std::cout << "  SET_COMPACTION <strategy>   - Set compaction strategy (LEVELED/TIERED/SIZE_TIERED/TIME_WINDOW)\n";
+    if (syntax_highlighting_) {
+        std::cout << BOLD << CYAN << "Available commands:" << RESET << "\n";
+        std::cout << "  " << GREEN << BOLD << "PUT" << RESET << " <key> <value>          - Insert or update a key-value pair\n";
+        std::cout << "  " << BLUE << BOLD << "GET" << RESET << " <key>                  - Get value for a key\n";
+        std::cout << "  " << RED << BOLD << "DEL" << RESET << " <key>                  - Delete a key\n";
+        std::cout << "  " << YELLOW << BOLD << "FLUSH" << RESET << "                      - Flush MemTable to disk\n";
+        std::cout << "  " << YELLOW << BOLD << "COMPACT" << RESET << "                    - Trigger manual compaction\n";
+        std::cout << "  " << MAGENTA << BOLD << "SNAPSHOT" << RESET << "                   - Create a snapshot\n";
+        std::cout << "  " << BLUE << "GET_AT" << RESET << " <key> <snapshot_id> - Get value at a specific snapshot\n";
+        std::cout << "  " << MAGENTA << "RELEASE" << RESET << " <snapshot_id>      - Release a snapshot\n";
+        std::cout << "  " << CYAN << BOLD << "SCAN" << RESET << " <begin> <end>         - Range scan from begin to end\n";
+        std::cout << "  " << CYAN << BOLD << "PREFIX_SCAN" << RESET << " <prefix>       - Scan all keys with given prefix (optimized)\n";
+        std::cout << "  " << YELLOW << "CONCURRENT_TEST" << RESET << "            - Test concurrent iterator functionality\n";
+        std::cout << "  " << RED << "BENCHMARK" << RESET << " <workload> [args] - Run YCSB benchmark (A/B/C/D/E/F)\n";
+        std::cout << "  " << YELLOW << "SET_COMPACTION" << RESET << " <strategy>   - Set compaction strategy (LEVELED/TIERED/SIZE_TIERED/TIME_WINDOW)\n";
 #ifdef ENABLE_NETWORK
-    std::cout << "  START_NETWORK <service>     - Start network services (grpc/websocket/all)\n";
-    std::cout << "  STOP_NETWORK <service>      - Stop network services (grpc/websocket/all)\n";
+        std::cout << "  " << GREEN << "START_NETWORK" << RESET << " <service>     - Start network services (grpc/websocket/all)\n";
+        std::cout << "  " << RED << "STOP_NETWORK" << RESET << " <service>      - Stop network services (grpc/websocket/all)\n";
 #endif
-    std::cout << "  STATS                      - Show database statistics\n";
-    std::cout << "  LSM                        - Show LSM tree structure\n";
-    std::cout << "  HELP                       - Show this help message\n";
-    std::cout << "  MAN <command>              - Show detailed manual for a command\n";
-    std::cout << "  EXIT/QUIT                  - Exit the database\n";
-    std::cout << "\nFor detailed help on a specific command:\n";
-    std::cout << "  MAN <command>              - e.g., MAN PUT\n";
-    std::cout << "  <command> HELP             - e.g., PUT HELP\n";
-    std::cout << "  <command> - HELP           - e.g., PUT - HELP\n";
+        std::cout << "  " << WHITE << BOLD << "STATS" << RESET << "                      - Show database statistics\n";
+        std::cout << "  " << WHITE << BOLD << "LSM" << RESET << "                        - Show LSM tree structure\n";
+        std::cout << "\n" << BOLD << YELLOW << "Enhanced CLI Features:" << RESET << "\n";
+        std::cout << "  " << MAGENTA << "SOURCE" << RESET << " <filename>         - Execute commands from script file\n";
+        std::cout << "  " << YELLOW << "MULTILINE" << RESET << " <ON|OFF|STATUS>  - Control multi-line input mode\n";
+        std::cout << "  " << YELLOW << "HIGHLIGHT" << RESET << " <ON|OFF|STATUS>  - Control syntax highlighting\n";
+        std::cout << "  " << WHITE << "HISTORY" << RESET << " <SHOW|CLEAR|SAVE|LOAD> - Manage command history\n";
+        std::cout << "  " << WHITE << "CLEAR" << RESET << "                      - Clear screen\n";
+        std::cout << "  " << GREEN << "ECHO" << RESET << " <message>             - Display a message\n";
+        std::cout << "  " << CYAN << "HELP" << RESET << "                       - Show this help message\n";
+        std::cout << "  " << CYAN << "MAN" << RESET << " <command>              - Show detailed manual for a command\n";
+        std::cout << "  " << RED << BOLD << "EXIT/QUIT" << RESET << "                  - Exit the database\n";
+        std::cout << "\n" << BOLD << GREEN << "Tips:" << RESET << "\n";
+        std::cout << "  • Use " << BOLD << "↑/↓" << RESET << " keys for command history\n";
+        std::cout << "  • Use " << BOLD << "TAB" << RESET << " for command and parameter completion\n";
+        std::cout << "  • End lines with " << BOLD << "\\" << RESET << " for multi-line commands\n";
+        std::cout << "  • Use " << BOLD << "#" << RESET << " or " << BOLD << "//" << RESET << " for comments in scripts\n";
+        std::cout << "\nFor detailed help: " << YELLOW << BOLD << "MAN <command>" << RESET << " or " << YELLOW << BOLD << "<command> HELP" << RESET << "\n";
+    } else {
+        std::cout << "Available commands:\n";
+        std::cout << "  PUT <key> <value>          - Insert or update a key-value pair\n";
+        std::cout << "  GET <key>                  - Get value for a key\n";
+        std::cout << "  DEL <key>                  - Delete a key\n";
+        std::cout << "  FLUSH                      - Flush MemTable to disk\n";
+        std::cout << "  COMPACT                    - Trigger manual compaction\n";
+        std::cout << "  SNAPSHOT                   - Create a snapshot\n";
+        std::cout << "  GET_AT <key> <snapshot_id> - Get value at a specific snapshot\n";
+        std::cout << "  RELEASE <snapshot_id>      - Release a snapshot\n";
+        std::cout << "  SCAN <begin> <end>         - Range scan from begin to end\n";
+        std::cout << "  PREFIX_SCAN <prefix>       - Scan all keys with given prefix (optimized)\n";
+        std::cout << "  CONCURRENT_TEST            - Test concurrent iterator functionality\n";
+        std::cout << "  BENCHMARK <workload> [args] - Run YCSB benchmark (A/B/C/D/E/F)\n";
+        std::cout << "  SET_COMPACTION <strategy>   - Set compaction strategy (LEVELED/TIERED/SIZE_TIERED/TIME_WINDOW)\n";
+#ifdef ENABLE_NETWORK
+        std::cout << "  START_NETWORK <service>     - Start network services (grpc/websocket/all)\n";
+        std::cout << "  STOP_NETWORK <service>      - Stop network services (grpc/websocket/all)\n";
+#endif
+        std::cout << "  STATS                      - Show database statistics\n";
+        std::cout << "  LSM                        - Show LSM tree structure\n";
+        std::cout << "\nEnhanced CLI Features:\n";
+        std::cout << "  SOURCE <filename>          - Execute commands from script file\n";
+        std::cout << "  MULTILINE <ON|OFF|STATUS>  - Control multi-line input mode\n";
+        std::cout << "  HIGHLIGHT <ON|OFF|STATUS>  - Control syntax highlighting\n";
+        std::cout << "  HISTORY <SHOW|CLEAR|SAVE|LOAD> - Manage command history\n";
+        std::cout << "  CLEAR                      - Clear screen\n";
+        std::cout << "  ECHO <message>             - Display a message\n";
+        std::cout << "  HELP                       - Show this help message\n";
+        std::cout << "  MAN <command>              - Show detailed manual for a command\n";
+        std::cout << "  EXIT/QUIT                  - Exit the database\n";
+        std::cout << "\nTips:\n";
+        std::cout << "  • Use ↑/↓ keys for command history\n";
+        std::cout << "  • Use TAB for command and parameter completion\n";
+        std::cout << "  • End lines with \\ for multi-line commands\n";
+        std::cout << "  • Use # or // for comments in scripts\n";
+        std::cout << "\nFor detailed help: MAN <command> or <command> HELP\n";
+    }
 }
 
 void REPL::cmd_man(const std::vector<std::string>& tokens) {
@@ -1042,5 +1482,217 @@ void REPL::show_man_page(const std::string& command) {
         std::cout << "No manual entry for '" << command << "'\n";
         std::cout << "Available commands: PUT, GET, DEL, FLUSH, COMPACT, SNAPSHOT, GET_AT, RELEASE, SCAN, PREFIX_SCAN, CONCURRENT_TEST, BENCHMARK, SET_COMPACTION, STATS, LSM, HELP, MAN\n";
         std::cout << "Use 'HELP' to see all commands or 'MAN <command>' for specific help.\n";
+    }
+}
+
+// 新增命令实现
+void REPL::cmd_source(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: SOURCE <filename>\n";
+        std::cout << "Execute commands from a script file\n";
+        std::cout << "Example: SOURCE my_script.kvdb\n";
+        return;
+    }
+    
+    std::string filename = tokens[1];
+    if (!execute_script(filename)) {
+        if (syntax_highlighting_) {
+            std::cout << RED << "Failed to execute script: " << filename << RESET << std::endl;
+        } else {
+            std::cout << "Failed to execute script: " << filename << std::endl;
+        }
+    }
+}
+
+void REPL::cmd_multiline(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: MULTILINE <ON|OFF|STATUS>\n";
+        std::cout << "Control multi-line input mode\n";
+        std::cout << "  ON     - Enable multi-line mode for next command\n";
+        std::cout << "  OFF    - Disable multi-line mode\n";
+        std::cout << "  STATUS - Show current multi-line status\n";
+        return;
+    }
+    
+    std::string action = tokens[1];
+    for (char& c : action) {
+        c = std::toupper(c);
+    }
+    
+    if (action == "ON") {
+        if (syntax_highlighting_) {
+            std::cout << GREEN << "Multi-line mode enabled. End lines with '\\' to continue, or type 'END' to finish." << RESET << std::endl;
+        } else {
+            std::cout << "Multi-line mode enabled. End lines with '\\' to continue, or type 'END' to finish." << std::endl;
+        }
+        enter_multi_line_mode("");
+    } else if (action == "OFF") {
+        if (multi_line_mode_) {
+            exit_multi_line_mode();
+            if (syntax_highlighting_) {
+                std::cout << YELLOW << "Multi-line mode disabled." << RESET << std::endl;
+            } else {
+                std::cout << "Multi-line mode disabled." << std::endl;
+            }
+        } else {
+            std::cout << "Multi-line mode is already off." << std::endl;
+        }
+    } else if (action == "STATUS") {
+        if (syntax_highlighting_) {
+            std::cout << "Multi-line mode: " << (multi_line_mode_ ? GREEN + "ON" : RED + "OFF") << RESET << std::endl;
+        } else {
+            std::cout << "Multi-line mode: " << (multi_line_mode_ ? "ON" : "OFF") << std::endl;
+        }
+        if (multi_line_mode_) {
+            std::cout << "Current buffer: " << multi_line_buffer_ << std::endl;
+        }
+    } else {
+        std::cout << "Invalid action: " << action << std::endl;
+        std::cout << "Valid actions: ON, OFF, STATUS" << std::endl;
+    }
+}
+
+void REPL::cmd_highlight(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: HIGHLIGHT <ON|OFF|STATUS>\n";
+        std::cout << "Control syntax highlighting\n";
+        std::cout << "  ON     - Enable syntax highlighting\n";
+        std::cout << "  OFF    - Disable syntax highlighting\n";
+        std::cout << "  STATUS - Show current highlighting status\n";
+        return;
+    }
+    
+    std::string action = tokens[1];
+    for (char& c : action) {
+        c = std::toupper(c);
+    }
+    
+    if (action == "ON") {
+        syntax_highlighting_ = true;
+        std::cout << GREEN << "Syntax highlighting enabled." << RESET << std::endl;
+    } else if (action == "OFF") {
+        syntax_highlighting_ = false;
+        std::cout << "Syntax highlighting disabled." << std::endl;
+    } else if (action == "STATUS") {
+        if (syntax_highlighting_) {
+            std::cout << "Syntax highlighting: " << GREEN << "ON" << RESET << std::endl;
+        } else {
+            std::cout << "Syntax highlighting: OFF" << std::endl;
+        }
+    } else {
+        std::cout << "Invalid action: " << action << std::endl;
+        std::cout << "Valid actions: ON, OFF, STATUS" << std::endl;
+    }
+}
+
+void REPL::cmd_history(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: HISTORY <SHOW|CLEAR|SAVE|LOAD> [filename]\n";
+        std::cout << "Manage command history\n";
+        std::cout << "  SHOW        - Display command history\n";
+        std::cout << "  CLEAR       - Clear command history\n";
+        std::cout << "  SAVE [file] - Save history to file (default: .kvdb_history)\n";
+        std::cout << "  LOAD [file] - Load history from file (default: .kvdb_history)\n";
+        return;
+    }
+    
+    std::string action = tokens[1];
+    for (char& c : action) {
+        c = std::toupper(c);
+    }
+    
+#ifdef HAVE_READLINE
+    if (action == "SHOW") {
+        HIST_ENTRY** history_list = history_list_entries();
+        if (history_list) {
+            int count = 1;
+            for (int i = 0; history_list[i]; i++) {
+                if (syntax_highlighting_) {
+                    std::cout << DIM << std::setw(4) << count++ << ": " << RESET 
+                              << apply_syntax_highlighting(history_list[i]->line) << std::endl;
+                } else {
+                    std::cout << std::setw(4) << count++ << ": " << history_list[i]->line << std::endl;
+                }
+            }
+        } else {
+            std::cout << "No history available." << std::endl;
+        }
+    } else if (action == "CLEAR") {
+        clear_history();
+        if (syntax_highlighting_) {
+            std::cout << YELLOW << "Command history cleared." << RESET << std::endl;
+        } else {
+            std::cout << "Command history cleared." << std::endl;
+        }
+    } else if (action == "SAVE") {
+        std::string filename = (tokens.size() > 2) ? tokens[2] : ".kvdb_history";
+        if (write_history(filename.c_str()) == 0) {
+            if (syntax_highlighting_) {
+                std::cout << GREEN << "History saved to " << filename << RESET << std::endl;
+            } else {
+                std::cout << "History saved to " << filename << std::endl;
+            }
+        } else {
+            if (syntax_highlighting_) {
+                std::cout << RED << "Failed to save history to " << filename << RESET << std::endl;
+            } else {
+                std::cout << "Failed to save history to " << filename << std::endl;
+            }
+        }
+    } else if (action == "LOAD") {
+        std::string filename = (tokens.size() > 2) ? tokens[2] : ".kvdb_history";
+        if (read_history(filename.c_str()) == 0) {
+            if (syntax_highlighting_) {
+                std::cout << GREEN << "History loaded from " << filename << RESET << std::endl;
+            } else {
+                std::cout << "History loaded from " << filename << std::endl;
+            }
+        } else {
+            if (syntax_highlighting_) {
+                std::cout << RED << "Failed to load history from " << filename << RESET << std::endl;
+            } else {
+                std::cout << "Failed to load history from " << filename << std::endl;
+            }
+        }
+    } else {
+        std::cout << "Invalid action: " << action << std::endl;
+        std::cout << "Valid actions: SHOW, CLEAR, SAVE, LOAD" << std::endl;
+    }
+#else
+    std::cout << "History management requires readline support." << std::endl;
+#endif
+}
+
+void REPL::cmd_clear() {
+    // 清屏
+    std::cout << "\033[2J\033[H";
+    
+    if (syntax_highlighting_) {
+        std::cout << BOLD << CYAN << "KVDB v1.0.0" << RESET << " - Enhanced Command Line Interface\n";
+        std::cout << GREEN << "Screen cleared." << RESET << std::endl;
+    } else {
+        std::cout << "KVDB v1.0.0 - Enhanced Command Line Interface\n";
+        std::cout << "Screen cleared." << std::endl;
+    }
+}
+
+void REPL::cmd_echo(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: ECHO <message>\n";
+        std::cout << "Display a message\n";
+        return;
+    }
+    
+    // 连接所有参数作为消息
+    std::string message;
+    for (size_t i = 1; i < tokens.size(); i++) {
+        if (i > 1) message += " ";
+        message += tokens[i];
+    }
+    
+    if (syntax_highlighting_) {
+        std::cout << GREEN << message << RESET << std::endl;
+    } else {
+        std::cout << message << std::endl;
     }
 }
