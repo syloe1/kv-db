@@ -1,5 +1,5 @@
 #pragma once
-#include "storage/memtable.h"
+#include "kv_db.h"
 #include "log/wal.h"
 #include "cache/cache_manager.h"
 #include "cache/cache_adapter.h"
@@ -10,6 +10,7 @@
 #include "iterator/iterator.h"
 #include "iterator/concurrent_iterator.h"
 #include "compaction/compaction_strategy.h"
+#include "index/index_manager.h"
 #include <vector>
 #include <thread>
 #include <condition_variable>
@@ -55,6 +56,18 @@ public:
     size_t get_wal_size() const;
     double get_cache_hit_rate() const;
     void print_lsm_structure() const;
+    
+    // 索引管理
+    IndexManager& get_index_manager() { return *index_manager_; }
+    const IndexManager& get_index_manager() const { return *index_manager_; }
+    
+    // 索引操作
+    bool create_secondary_index(const std::string& name, const std::string& field, bool unique = false);
+    bool create_composite_index(const std::string& name, const std::vector<std::string>& fields);
+    bool create_fulltext_index(const std::string& name, const std::string& field);
+    bool create_inverted_index(const std::string& name, const std::string& field);
+    bool drop_index(const std::string& name);
+    std::vector<IndexMetadata> list_indexes();
 
 private:
     // 读写隔离相关
@@ -118,4 +131,7 @@ private:
     std::atomic<bool> flush_requested_{false};
     std::atomic<bool> compaction_requested_{false};
     std::atomic<bool> stop_{false};
+    
+    // 索引管理器
+    std::unique_ptr<IndexManager> index_manager_;
 };

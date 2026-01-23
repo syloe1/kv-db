@@ -33,6 +33,24 @@ set(KVDB_SOURCES
     src/network/http_server.cpp
     # 新增查询引擎
     src/query/query_engine.cpp
+    # 新增索引系统
+    src/index/secondary_index.cpp
+    src/index/composite_index.cpp
+    src/index/tokenizer.cpp
+    src/index/fulltext_index.cpp
+    src/index/inverted_index.cpp
+    src/index/index_manager.cpp
+    src/index/query_optimizer.cpp
+    # 数据类型扩展
+    src/storage/data_types.cpp
+    src/storage/typed_memtable.cpp
+    src/db/typed_kv_db.cpp
+    # 序列化支持
+    src/storage/serialization_factory.cpp
+    src/storage/binary_serializer.cpp
+    src/storage/json_serializer.cpp
+    src/storage/messagepack_serializer.cpp
+    src/storage/protobuf_serializer.cpp
 )
 
 # 网络功能源文件
@@ -114,6 +132,41 @@ add_executable(kvdb ${KVDB_SOURCES})
 find_path(READLINE_INCLUDE_DIR readline/readline.h)
 find_library(READLINE_LIBRARY readline)
 
+# 查找序列化相关库
+find_library(ZLIB_LIBRARY z)
+find_path(NLOHMANN_JSON_INCLUDE_DIR nlohmann/json.hpp)
+find_path(MSGPACK_INCLUDE_DIR msgpack.hpp)
+
+# 检查序列化依赖
+set(SERIALIZATION_LIBS "")
+set(SERIALIZATION_INCLUDES "")
+
+if(ZLIB_LIBRARY)
+    list(APPEND SERIALIZATION_LIBS ${ZLIB_LIBRARY})
+    message(STATUS "Found zlib: ${ZLIB_LIBRARY}")
+else()
+    message(WARNING "zlib not found, compression features will be disabled")
+    message(STATUS "To enable compression, install: sudo apt-get install zlib1g-dev")
+endif()
+
+if(NLOHMANN_JSON_INCLUDE_DIR)
+    list(APPEND SERIALIZATION_INCLUDES ${NLOHMANN_JSON_INCLUDE_DIR})
+    target_compile_definitions(kvdb PRIVATE HAVE_NLOHMANN_JSON)
+    message(STATUS "Found nlohmann/json: ${NLOHMANN_JSON_INCLUDE_DIR}")
+else()
+    message(STATUS "nlohmann/json not found, JSON serialization will use fallback implementation")
+    message(STATUS "To enable full JSON support, install: sudo apt-get install nlohmann-json3-dev")
+endif()
+
+if(MSGPACK_INCLUDE_DIR)
+    list(APPEND SERIALIZATION_INCLUDES ${MSGPACK_INCLUDE_DIR})
+    target_compile_definitions(kvdb PRIVATE HAVE_MSGPACK)
+    message(STATUS "Found MessagePack: ${MSGPACK_INCLUDE_DIR}")
+else()
+    message(STATUS "MessagePack not found, MessagePack serialization will be disabled")
+    message(STATUS "To enable MessagePack support, install: sudo apt-get install libmsgpack-dev")
+endif()
+
 if(READLINE_INCLUDE_DIR AND READLINE_LIBRARY)
     target_include_directories(kvdb PRIVATE ${READLINE_INCLUDE_DIR})
     target_link_libraries(kvdb ${READLINE_LIBRARY})
@@ -124,6 +177,15 @@ else()
     message(STATUS "readline not found")
     message(STATUS "To enable command history and completion, install: sudo apt-get install libreadline-dev")
     message(STATUS "Continuing without readline support...")
+endif()
+
+# 链接序列化相关库
+if(SERIALIZATION_LIBS)
+    target_link_libraries(kvdb ${SERIALIZATION_LIBS})
+endif()
+
+if(SERIALIZATION_INCLUDES)
+    target_include_directories(kvdb PRIVATE ${SERIALIZATION_INCLUDES})
 endif()
 
 # 网络功能链接库

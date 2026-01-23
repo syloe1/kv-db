@@ -9,6 +9,7 @@
 #include "iterator/sstable_iterator.h"
 #include "iterator/merge_iterator.h"
 #include "iterator/concurrent_iterator.h"
+#include "index/index_manager.h"
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -72,6 +73,9 @@ KVDB::KVDB(const std::string& wal_file)
     // 启动后台线程
     bg_flush_thread_ = std::thread(&KVDB::flush_worker, this);
     bg_compact_thread_ = std::thread(&KVDB::compact_worker, this);
+    
+    // 初始化索引管理器
+    index_manager_ = std::make_unique<IndexManager>(*this);
 }
 
 KVDB::~KVDB() {
@@ -107,9 +111,22 @@ void KVDB::release_snapshot(const Snapshot& snapshot) {
 bool KVDB::put(const std::string& key, const std::string& value) {
     begin_write_operation();
     
+    // 获取旧值用于索引更新
+    std::string old_value;
+    bool had_old_value = get(key, old_value);
+    
     uint64_t seq = next_seq();
     wal_.log_put(key, value);
     memtable_.put(key, value, seq);
+    
+    // 更新索引
+    if (index_manager_) {
+        if (had_old_value) {
+            index_manager_->update_indexes(key, old_value, value);
+        } else {
+            index_manager_->add_to_indexes(key, value);
+        }
+    }
     
     if (memtable_.size() >= MEMTABLE_LIMIT) {
         request_flush();
@@ -122,9 +139,18 @@ bool KVDB::put(const std::string& key, const std::string& value) {
 bool KVDB::del(const std::string& key) {
     begin_write_operation();
     
+    // 获取旧值用于索引更新
+    std::string old_value;
+    bool had_value = get(key, old_value);
+    
     uint64_t seq = next_seq();
     wal_.log_del(key);
     memtable_.del(key, seq);
+    
+    // 从索引中移除
+    if (index_manager_ && had_value) {
+        index_manager_->remove_from_indexes(key, old_value);
+    }
     
     if (memtable_.size() >= MEMTABLE_LIMIT) {
         request_flush();
@@ -786,4 +812,46 @@ void KVDB::print_cache_stats() const {
 
 double KVDB::get_cache_hit_rate() const {
     return cache_manager_->get_hit_rate();
+}
+// 索引管理方法
+bool KVDB::create_secondary_index(const std::string& name, const std::string& field, bool unique) {
+    if (!index_manager_) {
+        return false;
+    }
+    return index_manager_->create_secondary_index(name, field, unique);
+}
+
+bool KVDB::create_composite_index(const std::string& name, const std::vector<std::string>& fields) {
+    if (!index_manager_) {
+        return false;
+    }
+    return index_manager_->create_composite_index(name, fields);
+}
+
+bool KVDB::create_fulltext_index(const std::string& name, const std::string& field) {
+    if (!index_manager_) {
+        return false;
+    }
+    return index_manager_->create_fulltext_index(name, field);
+}
+
+bool KVDB::create_inverted_index(const std::string& name, const std::string& field) {
+    if (!index_manager_) {
+        return false;
+    }
+    return index_manager_->create_inverted_index(name, field);
+}
+
+bool KVDB::drop_index(const std::string& name) {
+    if (!index_manager_) {
+        return false;
+    }
+    return index_manager_->drop_index(name);
+}
+
+std::vector<IndexMetadata> KVDB::list_indexes() {
+    if (!index_manager_) {
+        return {};
+    }
+    return index_manager_->list_indexes();
 }
