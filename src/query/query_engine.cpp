@@ -222,11 +222,12 @@ QueryResult QueryEngine::scan_ordered(const std::string& start_key,
             std::string key = iter->key();
             std::string value = iter->value();
             
-            // 检查是否超出结束键
+            // 检查是否超出结束键（只有当end_key不为空时才检查）
             if (!end_key.empty() && key > end_key) {
                 break;
             }
             
+            // 添加所有记录（包括空值）
             result.results.emplace_back(key, value);
             
             // 检查限制
@@ -241,6 +242,7 @@ QueryResult QueryEngine::scan_ordered(const std::string& start_key,
         if (order == SortOrder::DESC) {
             sort_results(result.results, order);
         }
+        // ASC order is already natural from iterator
         
         result.total_count = result.results.size();
         result.success = true;
@@ -364,45 +366,61 @@ bool QueryEngine::evaluate_condition(const std::string& key, const std::string& 
 
 bool QueryEngine::match_pattern(const std::string& text, const std::string& pattern) {
     try {
-        // 将通配符模式转换为正则表达式
-        std::string regex_pattern = pattern;
+        // 如果模式为空，匹配所有
+        if (pattern.empty()) {
+            return true;
+        }
         
-        // 转义特殊字符
-        std::string special_chars = "()[]{}+.^$|\\";
-        for (char c : special_chars) {
-            std::string from(1, c);
-            std::string to = "\\" + from;
+        // 简单的通配符匹配，支持 * 和 ?
+        if (pattern.find('*') != std::string::npos || pattern.find('?') != std::string::npos) {
+            // 将通配符模式转换为正则表达式
+            std::string regex_pattern = pattern;
+            
+            // 转义特殊字符（除了*和?）
+            std::string special_chars = "()[]{}+.^$|\\:";
+            for (char c : special_chars) {
+                std::string from(1, c);
+                std::string to = "\\" + from;
+                size_t pos = 0;
+                while ((pos = regex_pattern.find(from, pos)) != std::string::npos) {
+                    regex_pattern.replace(pos, 1, to);
+                    pos += 2;
+                }
+            }
+            
+            // 替换通配符
             size_t pos = 0;
-            while ((pos = regex_pattern.find(from, pos)) != std::string::npos) {
-                regex_pattern.replace(pos, 1, to);
+            while ((pos = regex_pattern.find("*", pos)) != std::string::npos) {
+                regex_pattern.replace(pos, 1, ".*");
                 pos += 2;
             }
+            
+            pos = 0;
+            while ((pos = regex_pattern.find("?", pos)) != std::string::npos) {
+                regex_pattern.replace(pos, 1, ".");
+                pos += 1;
+            }
+            
+            std::regex regex(regex_pattern);
+            return std::regex_match(text, regex);
+        } else {
+            // 没有通配符，使用前缀匹配
+            return text.find(pattern) == 0;
         }
-        
-        // 替换通配符
-        size_t pos = 0;
-        while ((pos = regex_pattern.find("\\*", pos)) != std::string::npos) {
-            regex_pattern.replace(pos, 2, ".*");
-            pos += 2;
-        }
-        
-        pos = 0;
-        while ((pos = regex_pattern.find("\\?", pos)) != std::string::npos) {
-            regex_pattern.replace(pos, 2, ".");
-            pos += 1;
-        }
-        
-        std::regex regex(regex_pattern);
-        return std::regex_match(text, regex);
     } catch (const std::exception&) {
-        // 如果正则表达式失败，回退到简单的字符串匹配
-        return text.find(pattern) != std::string::npos;
+        // 如果正则表达式失败，回退到简单的前缀匹配
+        return text.find(pattern) == 0;
     }
 }
 
 double QueryEngine::parse_numeric_value(const std::string& value) {
     try {
-        return std::stod(value);
+        std::string clean_value = value;
+        // Remove surrounding quotes if present
+        if (clean_value.size() >= 2 && clean_value.front() == '"' && clean_value.back() == '"') {
+            clean_value = clean_value.substr(1, clean_value.size() - 2);
+        }
+        return std::stod(clean_value);
     } catch (const std::exception&) {
         return 0.0;
     }
@@ -412,7 +430,12 @@ bool QueryEngine::is_numeric(const std::string& value) {
     if (value.empty()) return false;
     
     try {
-        std::stod(value);
+        std::string clean_value = value;
+        // Remove surrounding quotes if present
+        if (clean_value.size() >= 2 && clean_value.front() == '"' && clean_value.back() == '"') {
+            clean_value = clean_value.substr(1, clean_value.size() - 2);
+        }
+        std::stod(clean_value);
         return true;
     } catch (const std::exception&) {
         return false;

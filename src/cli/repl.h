@@ -114,6 +114,8 @@ private:
     void cmd_avg(const std::vector<std::string>& tokens);
     void cmd_min_max(const std::vector<std::string>& tokens);
     void cmd_scan_ordered(const std::vector<std::string>& tokens);
+    void cmd_exists(const std::vector<std::string>& tokens);
+    void cmd_keys(const std::vector<std::string>& tokens);
     
     // 帮助系统相关
     bool is_help_request(const std::vector<std::string>& tokens);

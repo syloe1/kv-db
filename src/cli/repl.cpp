@@ -27,6 +27,7 @@ std::vector<std::string> REPL::commands_ = {
     "SOURCE", "MULTILINE", "HIGHLIGHT", "HISTORY", "CLEAR", "ECHO",
     // 新增高级查询命令
     "BATCH", "GET_WHERE", "COUNT", "SUM", "AVG", "MIN_MAX", "SCAN_ORDER",
+    "EXISTS", "KEYS",
     "EXIT", "QUIT"
 };
 
@@ -109,6 +110,8 @@ void REPL::setup_colors() {
     color_map_["AVG"] = CYAN + BOLD;
     color_map_["MIN_MAX"] = CYAN + BOLD;
     color_map_["SCAN_ORDER"] = CYAN + BOLD;
+    color_map_["EXISTS"] = GREEN + BOLD;
+    color_map_["KEYS"] = CYAN + BOLD;
 }
 
 std::string REPL::apply_syntax_highlighting(const std::string& line) {
@@ -631,6 +634,10 @@ void REPL::execute_command(const std::vector<std::string>& tokens) {
             cmd_min_max(tokens);
         } else if (cmd == "SCAN_ORDER") {
             cmd_scan_ordered(tokens);
+        } else if (cmd == "EXISTS") {
+            cmd_exists(tokens);
+        } else if (cmd == "KEYS") {
+            cmd_keys(tokens);
         } else {
             if (syntax_highlighting_) {
                 std::cout << RED << "Unknown command: " << cmd << RESET << ". Type " 
@@ -1084,6 +1091,8 @@ void REPL::cmd_help() {
         std::cout << "  " << CYAN << BOLD << "AVG" << RESET << " [pattern]             - Average numeric values\n";
         std::cout << "  " << CYAN << BOLD << "MIN_MAX" << RESET << " [pattern]          - Min/Max numeric values\n";
         std::cout << "  " << CYAN << BOLD << "SCAN_ORDER" << RESET << " <ASC|DESC> [...]  - Ordered range scan\n";
+        std::cout << "  " << GREEN << BOLD << "EXISTS" << RESET << " <key>               - Check if key exists\n";
+        std::cout << "  " << CYAN << BOLD << "KEYS" << RESET << " <pattern>            - Find keys matching pattern\n";
         std::cout << "\n" << BOLD << YELLOW << "Enhanced CLI Features:" << RESET << "\n";
         std::cout << "  " << MAGENTA << "SOURCE" << RESET << " <filename>         - Execute commands from script file\n";
         std::cout << "  " << YELLOW << "MULTILINE" << RESET << " <ON|OFF|STATUS>  - Control multi-line input mode\n";
@@ -1129,6 +1138,8 @@ void REPL::cmd_help() {
         std::cout << "  AVG [pattern]              - Average numeric values\n";
         std::cout << "  MIN_MAX [pattern]          - Min/Max numeric values\n";
         std::cout << "  SCAN_ORDER <ASC|DESC> [...] - Ordered range scan\n";
+        std::cout << "  EXISTS <key>               - Check if key exists\n";
+        std::cout << "  KEYS <pattern>             - Find keys matching pattern\n";
         std::cout << "\nEnhanced CLI Features:\n";
         std::cout << "  SOURCE <filename>          - Execute commands from script file\n";
         std::cout << "  MULTILINE <ON|OFF|STATUS>  - Control multi-line input mode\n";
@@ -1825,14 +1836,14 @@ void REPL::cmd_batch_del(const std::vector<std::string>& tokens) {
 }
 
 void REPL::cmd_get_where(const std::vector<std::string>& tokens) {
-    if (tokens.size() < 5) {
+    if (tokens.size() < 4) {
         std::cout << "Usage: GET_WHERE <field> <operator> <value> [LIMIT <n>]\n";
         std::cout << "Fields: key, value\n";
         std::cout << "Operators: =, !=, LIKE, NOT_LIKE, >, <, >=, <=\n";
         std::cout << "Examples:\n";
-        std::cout << "  GET_WHERE key LIKE 'user:*'\n";
-        std::cout << "  GET_WHERE value > '100'\n";
-        std::cout << "  GET_WHERE key = 'config:timeout' LIMIT 10\n";
+        std::cout << "  GET_WHERE key LIKE user:*\n";
+        std::cout << "  GET_WHERE value > 100\n";
+        std::cout << "  GET_WHERE key = user:1:name LIMIT 10\n";
         return;
     }
     
@@ -1870,6 +1881,15 @@ void REPL::cmd_get_where(const std::vector<std::string>& tokens) {
             limit = std::stoull(tokens[5]);
         } catch (const std::exception&) {
             std::cout << "Invalid limit value: " << tokens[5] << "\n";
+            return;
+        }
+    } else if (tokens.size() >= 5 && tokens[3] == "LIMIT") {
+        // 处理没有value的情况，如 GET_WHERE key LIMIT 10
+        try {
+            limit = std::stoull(tokens[4]);
+            value = "";  // 重置value
+        } catch (const std::exception&) {
+            std::cout << "Invalid limit value: " << tokens[4] << "\n";
             return;
         }
     }
@@ -2028,24 +2048,29 @@ void REPL::cmd_scan_ordered(const std::vector<std::string>& tokens) {
     std::string end_key = "";
     size_t limit = 0;
     
-    if (tokens.size() >= 3) {
-        start_key = tokens[2];
-    }
-    if (tokens.size() >= 4) {
-        end_key = tokens[3];
-    }
-    
-    // 解析LIMIT
-    for (size_t i = 4; i < tokens.size(); i++) {
-        if (tokens[i] == "LIMIT" && i + 1 < tokens.size()) {
-            try {
-                limit = std::stoull(tokens[i + 1]);
-            } catch (const std::exception&) {
-                std::cout << "Invalid limit value: " << tokens[i + 1] << "\n";
-                return;
+    // 先找到LIMIT的位置
+    size_t limit_pos = tokens.size();
+    for (size_t i = 2; i < tokens.size(); i++) {
+        if (tokens[i] == "LIMIT") {
+            limit_pos = i;
+            if (i + 1 < tokens.size()) {
+                try {
+                    limit = std::stoull(tokens[i + 1]);
+                } catch (const std::exception&) {
+                    std::cout << "Invalid limit value: " << tokens[i + 1] << "\n";
+                    return;
+                }
             }
             break;
         }
+    }
+    
+    // 解析start_key和end_key（在LIMIT之前的参数）
+    if (tokens.size() >= 3 && limit_pos > 2) {
+        start_key = tokens[2];
+    }
+    if (tokens.size() >= 4 && limit_pos > 3) {
+        end_key = tokens[3];
     }
     
     QueryResult result = query_engine_->scan_ordered(start_key, end_key, order, limit);
@@ -2059,5 +2084,52 @@ void REPL::cmd_scan_ordered(const std::vector<std::string>& tokens) {
                   << (order == SortOrder::ASC ? "ASC" : "DESC") << ")\n";
     } else {
         std::cout << "Ordered scan failed: " << result.error_message << "\n";
+    }
+}
+
+void REPL::cmd_exists(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: EXISTS <key>\n";
+        std::cout << "Check if a key exists in the database\n";
+        std::cout << "Example: EXISTS user:1:name\n";
+        return;
+    }
+    
+    std::string key = tokens[1];
+    std::string value;
+    
+    if (db_.get(key, value)) {
+        std::cout << "EXISTS\n";
+    } else {
+        std::cout << "NOT EXISTS\n";
+    }
+}
+
+void REPL::cmd_keys(const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        std::cout << "Usage: KEYS <pattern>\n";
+        std::cout << "Find all keys matching the given pattern\n";
+        std::cout << "Patterns: use * for wildcard, ? for single character\n";
+        std::cout << "Examples:\n";
+        std::cout << "  KEYS user:*        - All keys starting with 'user:'\n";
+        std::cout << "  KEYS *:name        - All keys ending with ':name'\n";
+        std::cout << "  KEYS user:?:*      - Keys like 'user:1:name', 'user:2:age'\n";
+        return;
+    }
+    
+    std::string pattern = tokens[1];
+    
+    // 使用GET_WHERE来实现KEYS功能
+    QueryCondition condition("key", ConditionOperator::LIKE, pattern);
+    QueryResult result = query_engine_->query_where(condition, 0);
+    
+    if (result.success) {
+        std::cout << "=== Matching Keys ===\n";
+        for (const auto& pair : result.results) {
+            std::cout << pair.first << "\n";
+        }
+        std::cout << "Found " << result.total_count << " matching keys\n";
+    } else {
+        std::cout << "Keys search failed: " << result.error_message << "\n";
     }
 }
